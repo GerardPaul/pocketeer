@@ -1,7 +1,18 @@
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
 import { useColorScheme } from "nativewind";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import { type ReactNode, useState } from "react";
-import { type ColorValue, Pressable, Text, TextInput, type TextInputProps, View } from "react-native";
+import {
+  type ColorValue,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+} from "react-native";
 
 import { cleanAmountInput, cleanTextInput } from "@/lib/input";
 import palette from "@/lib/palette";
@@ -130,6 +141,30 @@ export function Heading({ children }: { children: string }) {
     <Text accessibilityRole="header" className="mt-3 font-semibold text-lg text-ink dark:text-white">
       {children}
     </Text>
+  );
+}
+
+// Scrolling container for form screens; keeps the focused field above the keyboard.
+// iOS scrolls natively. Android needs KeyboardAvoidingView, offset by the header because it measures from its own top.
+export function FormScrollView({ children }: { children: ReactNode }) {
+  const headerHeight = useHeaderHeight();
+  return (
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas dark:bg-canvas-dark"
+      behavior={Platform.OS === "android" ? "padding" : undefined}
+      enabled={Platform.OS === "android"}
+      keyboardVerticalOffset={headerHeight}
+    >
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-4 p-4 pb-8"
+        automaticallyAdjustKeyboardInsets
+        // A tap on Save (or any control) while the keyboard is up should act, not just close the keyboard.
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

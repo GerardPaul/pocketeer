@@ -1,9 +1,19 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
 import { DateField } from "@/components/date-field";
-import { Button, Choice, DeleteButton, EmptyState, ErrorText, Field, Muted, Segmented } from "@/components/ui";
+import {
+  Button,
+  Choice,
+  DeleteButton,
+  EmptyState,
+  ErrorText,
+  Field,
+  FormScrollView,
+  Muted,
+  Segmented,
+} from "@/components/ui";
 import { deleteTransaction, saveTransaction } from "@/db/db";
 import {
   type NewTransaction,
@@ -113,12 +123,7 @@ function TransactionForm({
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-canvas dark:bg-canvas-dark"
-      contentContainerClassName="gap-4 p-4 pb-8"
-      // A tap on Save (or any control) while the keyboard is up should act, not just close the keyboard.
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
       <Field label="Amount" value={amount} onChangeText={setAmount} amount />
@@ -154,6 +159,6 @@ function TransactionForm({
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />
       {existing && <DeleteButton onConfirm={remove} />}
-    </ScrollView>
+    </FormScrollView>
   );
 }

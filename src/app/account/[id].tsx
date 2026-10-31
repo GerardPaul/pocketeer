@@ -1,8 +1,7 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ScrollView } from "react-native";
 
-import { Button, DeleteButton, EmptyState, ErrorText, Field, Muted, Segmented } from "@/components/ui";
+import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, Muted, Segmented } from "@/components/ui";
 import { deleteAccount, saveAccount } from "@/db/db";
 import { type Account, type AccountType, validateAccount } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
@@ -85,12 +84,7 @@ function AccountForm({
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-canvas dark:bg-canvas-dark"
-      contentContainerClassName="gap-4 p-4 pb-8"
-      // A tap on Save (or any control) while the keyboard is up should act, not just close the keyboard.
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit account" : "New account" }} />
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Cash, BDO, Visa" />
       {used ? (
@@ -110,6 +104,6 @@ function AccountForm({
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />
       {existing && (used ? <Muted>Accounts with transactions can’t be deleted.</Muted> : <DeleteButton onConfirm={remove} />)}
-    </ScrollView>
+    </FormScrollView>
   );
 }
