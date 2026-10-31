@@ -47,6 +47,7 @@ export default function Setup() {
         data={matches}
         keyExtractor={(c) => c.code}
         numColumns={3}
+        keyboardShouldPersistTaps="handled"
         className="flex-1"
         accessibilityRole="radiogroup"
         renderItem={({ item }) => {

@@ -113,7 +113,12 @@ function TransactionForm({
   }
 
   return (
-    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-4 p-4 pb-8">
+    <ScrollView
+      className="flex-1 bg-canvas dark:bg-canvas-dark"
+      contentContainerClassName="gap-4 p-4 pb-8"
+      // A tap on Save (or any control) while the keyboard is up should act, not just close the keyboard.
+      keyboardShouldPersistTaps="handled"
+    >
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
       <Field label="Amount" value={amount} onChangeText={setAmount} amount />
