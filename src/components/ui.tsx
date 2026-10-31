@@ -22,7 +22,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
-      accessibilityState={{ disabled }}
+      aria-disabled={disabled}
       disabled={disabled}
       onPress={onPress}
       className={`items-center rounded-xl px-4 py-3 ${colors} ${disabled ? "opacity-40" : ""}`}
@@ -94,11 +94,47 @@ export function Segmented<T extends string>({
               key={o.value}
               accessibilityRole="radio"
               accessibilityLabel={o.label}
-              accessibilityState={{ selected: active }}
+              aria-checked={active}
               onPress={() => onChange(o.value)}
               className={`flex-1 items-center rounded-lg py-2 ${active ? "bg-white dark:bg-neutral-600" : ""}`}
             >
               <Text className="font-medium text-neutral-900 dark:text-white">{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// Like Segmented, but wraps onto multiple lines for longer lists (accounts, categories).
+export function Choice({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly { value: number; label: string }[];
+  value: number | null;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View className="gap-1">
+      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
+      <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-2">
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <Pressable
+              key={o.value}
+              accessibilityRole="radio"
+              accessibilityLabel={o.label}
+              aria-checked={active}
+              onPress={() => onChange(o.value)}
+              className={`rounded-full border px-4 py-2 ${active ? "border-emerald-600 bg-emerald-600" : "border-neutral-300 dark:border-neutral-600"}`}
+            >
+              <Text className={active ? "font-medium text-white" : "text-neutral-900 dark:text-white"}>{o.label}</Text>
             </Pressable>
           );
         })}

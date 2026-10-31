@@ -6,6 +6,7 @@ import { Button, ErrorText, Field, Muted } from "@/components/ui";
 import { setCurrency } from "@/db/db";
 import { CURRENCIES } from "@/lib/currencies";
 import { formatMoney } from "@/lib/money";
+import { HOME } from "@/lib/routes";
 import { useData } from "@/lib/use-data";
 
 export default function Setup() {
@@ -15,7 +16,7 @@ export default function Setup() {
   const [error, setError] = useState<string | null>(null);
 
   if (!data) return null;
-  if (data.currency) return <Redirect href="/(tabs)/index" />;
+  if (data.currency) return <Redirect href={HOME} />;
 
   const q = query.trim().toLowerCase();
   const matches = CURRENCIES.filter(
@@ -26,7 +27,7 @@ export default function Setup() {
     if (!selected) return;
     try {
       await setCurrency(db, selected);
-      router.replace("/(tabs)/index");
+      router.replace(HOME);
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -48,7 +49,7 @@ export default function Setup() {
             <Pressable
               accessibilityRole="radio"
               accessibilityLabel={`${item.code} ${item.name}`}
-              accessibilityState={{ selected: active }}
+              aria-checked={active}
               onPress={() => setSelected(item.code)}
               className={`flex-row items-center justify-between rounded-xl px-3 py-3 ${active ? "bg-emerald-100 dark:bg-emerald-900" : ""}`}
             >

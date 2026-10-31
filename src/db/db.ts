@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
-import type { Account, Category, CategoryBudget, Transaction } from "@/lib/ledger";
+import type { Account, Category, CategoryBudget, NewTransaction, Transaction } from "@/lib/ledger";
 
 const DATABASE_VERSION = 1;
 
@@ -116,6 +116,27 @@ export async function saveCategory(
 // Budgets cascade; the transactions foreign key makes SQLite reject this if the category is in use.
 export async function deleteCategory(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM categories WHERE id = ?", id);
+}
+
+export async function saveTransaction(db: SQLiteDatabase, t: NewTransaction) {
+  const values = [t.type, t.amount, t.date, t.note.trim(), t.account_id, t.to_account_id, t.category_id] as const;
+  if (t.id === undefined) {
+    await db.runAsync(
+      `INSERT INTO transactions (type, amount, date, note, account_id, to_account_id, category_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ...values,
+    );
+  } else {
+    await db.runAsync(
+      `UPDATE transactions SET type = ?, amount = ?, date = ?, note = ?, account_id = ?, to_account_id = ?,
+       category_id = ? WHERE id = ?`,
+      ...values, t.id,
+    );
+  }
+}
+
+export async function deleteTransaction(db: SQLiteDatabase, id: number) {
+  await db.runAsync("DELETE FROM transactions WHERE id = ?", id);
 }
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
