@@ -1,11 +1,9 @@
-import { Redirect } from "expo-router";
 import { Text, View } from "react-native";
 
 import { useData } from "@/lib/use-data";
 
-export default function Index() {
+export default function Home() {
   const { data, error } = useData();
-  if (data && !data.currency) return <Redirect href="/setup" />;
   return (
     <View className="flex-1 items-center justify-center bg-white dark:bg-neutral-900">
       <Text className="text-2xl font-bold text-neutral-900 dark:text-white">Pocketeer</Text>

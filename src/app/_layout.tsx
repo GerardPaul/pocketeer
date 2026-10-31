@@ -12,7 +12,10 @@ export default function RootLayout() {
   return (
     <SQLiteProvider databaseName="pocketeer.db" onInit={migrate}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+          <Stack.Screen name="account/[id]" options={{ presentation: "modal" }} />
+        </Stack>
       </ThemeProvider>
     </SQLiteProvider>
   );

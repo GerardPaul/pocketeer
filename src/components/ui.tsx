@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Pressable, Text, TextInput, type TextInputProps, View } from "react-native";
 
 export function Button({
@@ -21,6 +21,7 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
@@ -56,4 +57,65 @@ export function ErrorText({ children }: { children: ReactNode }) {
 
 export function Muted({ children }: { children: ReactNode }) {
   return <Text className="text-sm text-neutral-500 dark:text-neutral-400">{children}</Text>;
+}
+
+// Two taps to delete. Inline instead of Alert so it behaves the same on every platform.
+export function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return armed ? (
+    <View className="gap-2">
+      <Button title="Tap to confirm delete" variant="danger" onPress={onConfirm} />
+      <Button title="Cancel" variant="secondary" onPress={() => setArmed(false)} />
+    </View>
+  ) : (
+    <Button title="Delete" variant="secondary" onPress={() => setArmed(true)} />
+  );
+}
+
+export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <View className="gap-1">
+      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
+      <View accessibilityRole="radiogroup" className="flex-row gap-1 rounded-xl bg-neutral-200 p-1 dark:bg-neutral-800">
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <Pressable
+              key={o.value}
+              accessibilityRole="radio"
+              accessibilityLabel={o.label}
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(o.value)}
+              className={`flex-1 items-center rounded-lg py-2 ${active ? "bg-white dark:bg-neutral-600" : ""}`}
+            >
+              <Text className="font-medium text-neutral-900 dark:text-white">{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export function Card({ children, onPress }: { children: ReactNode; onPress?: () => void }) {
+  return (
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      className="gap-1 rounded-xl bg-neutral-100 p-4 active:opacity-70 dark:bg-neutral-800"
+    >
+      {children}
+    </Pressable>
+  );
 }

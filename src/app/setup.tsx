@@ -15,7 +15,7 @@ export default function Setup() {
   const [error, setError] = useState<string | null>(null);
 
   if (!data) return null;
-  if (data.currency) return <Redirect href="/" />;
+  if (data.currency) return <Redirect href="/(tabs)/index" />;
 
   const q = query.trim().toLowerCase();
   const matches = CURRENCIES.filter(
@@ -26,7 +26,7 @@ export default function Setup() {
     if (!selected) return;
     try {
       await setCurrency(db, selected);
-      router.replace("/");
+      router.replace("/(tabs)/index");
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -47,6 +47,7 @@ export default function Setup() {
           return (
             <Pressable
               accessibilityRole="radio"
+              accessibilityLabel={`${item.code} ${item.name}`}
               accessibilityState={{ selected: active }}
               onPress={() => setSelected(item.code)}
               className={`flex-row items-center justify-between rounded-xl px-3 py-3 ${active ? "bg-emerald-100 dark:bg-emerald-900" : ""}`}

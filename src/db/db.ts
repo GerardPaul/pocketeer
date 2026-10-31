@@ -71,6 +71,26 @@ export async function setCurrency(db: SQLiteDatabase, code: string) {
   );
 }
 
+export async function saveAccount(db: SQLiteDatabase, a: Omit<Account, "id"> & { id?: number }) {
+  const limit = a.type === "credit_card" ? a.credit_limit : null;
+  if (a.id === undefined) {
+    await db.runAsync(
+      "INSERT INTO accounts (name, type, starting_amount, credit_limit) VALUES (?, ?, ?, ?)",
+      a.name.trim(), a.type, a.starting_amount, limit,
+    );
+  } else {
+    await db.runAsync(
+      "UPDATE accounts SET name = ?, type = ?, starting_amount = ?, credit_limit = ? WHERE id = ?",
+      a.name.trim(), a.type, a.starting_amount, limit, a.id,
+    );
+  }
+}
+
+// The transactions foreign key makes SQLite reject this if the account is in use.
+export async function deleteAccount(db: SQLiteDatabase, id: number) {
+  await db.runAsync("DELETE FROM accounts WHERE id = ?", id);
+}
+
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
   const [setting, accounts, categories, budgets, transactions] = await Promise.all([
