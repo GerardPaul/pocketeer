@@ -67,12 +67,12 @@ Examples:
 
 0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below.
 1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed).
-2. **Categories** — create, edit, delete (only if no transactions); set monthly budget.
+2. **Categories** — create, edit, delete (only if no transactions); set monthly budget; pick an icon (shown in the Categories tab, budget rows, expense rows in history and the category picker).
 3. **Log expense** — amount, account, category, date, note.
 4. **Log income** — amount, account, date, note (e.g. salary).
 5. **Transfer** — move money between two accounts.
 6. **Dashboard** — each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month.
-7. **Transaction list** — view, edit, delete past entries.
+7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account.
 8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months.
 9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
@@ -93,7 +93,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Table | Fields |
 |---|---|
 | `accounts` | id, name, type (`regular` / `credit_card`), starting_amount, credit_limit (cards only) |
-| `categories` | id, name |
+| `categories` | id, name, icon (added in database version 2; defaults to `tag`) |
 | `category_budgets` | category_id, month (`YYYY-MM`), amount — the budget in effect from that month on; latest row at or before a month wins |
 | `transactions` | id, type (`expense` / `income` / `transfer`), amount, date, note, account_id, to_account_id (transfers only), category_id (expenses only) |
 | `settings` | currency |
@@ -159,6 +159,10 @@ None right now.
 - Forms: amount fields start empty with a "0" placeholder; Save stays disabled until required fields are valid (a blank starting balance counts as 0). Balance rules are still checked on save so the error can name the account.
 - Input filtering: amount fields accept digits and one decimal separator only; text fields drop control characters and are length-capped; all database queries use bound parameters.
 - Transaction dates can't be in the future (date picker capped at today; the form blocks later dates). Import doesn't apply this rule, so an older backup with future dates still loads.
+- Category icons come from a fixed list (`src/lib/category-icons.ts`). Backups without an icon, or with an unknown one, import with the default tag icon, so the backup format stays version 1.
+- Account and category pickers always use a dropdown with search instead of pills, so the form stays the same length however many there are. Built on React Native's `Modal`, so it runs in Expo Go.
+- Budgets on Home and History are a two-column grid of tiles with a circular meter showing what's left: it empties as the budget is used, and its track turns red when over budget. The ring is two rotating half-rings in plain Views, so no SVG library is needed.
+- Successful saves, deletes, backups, imports and clearing data show a short toast at the top. Errors stay inline next to the form. The toast is a small provider built on React Native's `Animated`, so it needs no library and runs in Expo Go.
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
 - Welcome screen shows only until a currency is picked, not on every launch.
 - Currency symbols are stored in the currency list instead of read from `Intl`, because narrow symbols differ between Hermes and browsers.

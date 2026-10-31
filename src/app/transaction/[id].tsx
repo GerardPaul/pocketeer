@@ -3,9 +3,9 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { DateField } from "@/components/date-field";
+import { useToast } from "@/components/toast";
 import {
   Button,
-  Choice,
   DeleteButton,
   EmptyState,
   ErrorText,
@@ -13,6 +13,7 @@ import {
   FormScrollView,
   Muted,
   Segmented,
+  Select,
 } from "@/components/ui";
 import { deleteTransaction, saveTransaction } from "@/db/db";
 import {
@@ -68,16 +69,24 @@ function TransactionForm({
   const [type, setType] = useState<TransactionType>(existing?.type ?? "expense");
   const [amount, setAmount] = useState(existing ? toInputString(existing.amount, currency) : "");
   const [accountId, setAccountId] = useState<number | null>(existing?.account_id ?? data.accounts[0]?.id ?? null);
-  const [toAccountId, setToAccountId] = useState<number | null>(existing?.to_account_id ?? null);
+  const [pickedToAccountId, setToAccountId] = useState<number | null>(existing?.to_account_id ?? null);
+  // Picking the destination as the new source clears it, since an account can't transfer to itself.
+  const toAccountId = pickedToAccountId === accountId ? null : pickedToAccountId;
   const [pickedCategoryId, setCategoryId] = useState<number | null>(existing?.category_id ?? null);
   // Falls back on render, so a category added from this screen gets picked once it exists.
   const categoryId = pickedCategoryId ?? data.categories[0]?.id ?? null;
   const [date, setDate] = useState(existing?.date ?? toDateString(new Date()));
   const [note, setNote] = useState(existing?.note ?? "");
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace(HOME));
-  const accountOptions = data.accounts.map((a) => ({ value: a.id, label: a.name }));
+  const accountOptions = data.accounts.map((a) => ({
+    value: a.id,
+    label: a.name,
+    icon: a.type === "credit_card" ? ("card" as const) : ("cash" as const),
+  }));
+  const toAccountOptions = accountOptions.filter((o) => o.value !== accountId);
   const today = toDateString(new Date());
 
   const minor = parseAmount(amount, currency);
@@ -105,6 +114,7 @@ function TransactionForm({
     try {
       await saveTransaction(db, tx);
       close();
+      toast(existing ? "Transaction updated" : "Transaction logged");
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -117,6 +127,7 @@ function TransactionForm({
     try {
       await deleteTransaction(db, existing.id);
       close();
+      toast("Transaction deleted");
     } catch (e) {
       setError(`Couldn't delete: ${String(e)}`);
     }
@@ -127,15 +138,18 @@ function TransactionForm({
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
       <Field label="Amount" value={amount} onChangeText={setAmount} amount />
-      <Choice
+      <Select
         label={type === "transfer" ? "From account" : "Account"}
         options={accountOptions}
         value={accountId}
         onChange={setAccountId}
       />
-      {type === "transfer" && (
-        <Choice label="To account" options={accountOptions} value={toAccountId} onChange={setToAccountId} />
-      )}
+      {type === "transfer" &&
+        (toAccountOptions.length === 0 ? (
+          <Muted>Add a second account to transfer between them.</Muted>
+        ) : (
+          <Select label="To account" options={toAccountOptions} value={toAccountId} onChange={setToAccountId} />
+        ))}
       {type === "expense" &&
         (data.categories.length === 0 ? (
           <View className="gap-2">
@@ -147,9 +161,9 @@ function TransactionForm({
             />
           </View>
         ) : (
-          <Choice
+          <Select
             label="Category"
-            options={data.categories.map((c) => ({ value: c.id, label: c.name }))}
+            options={data.categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon }))}
             value={categoryId}
             onChange={setCategoryId}
           />

@@ -4,7 +4,9 @@ import { useHeaderHeight } from "expo-router/react-navigation";
 import { type ReactNode, useState } from "react";
 import {
   type ColorValue,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,16 +15,47 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import type { CategoryIcon } from "@/lib/category-icons";
 import { cleanAmountInput, cleanTextInput } from "@/lib/input";
 import palette from "@/lib/palette";
 
 // SF Symbols on iOS, Material Symbols on Android and web.
+// Record over CategoryIcon makes a missing glyph for a category icon a type error.
+const CATEGORY_GLYPHS: Record<CategoryIcon, [SFSymbol, AndroidSymbol]> = {
+  tag: ["tag.fill", "sell"],
+  food: ["fork.knife", "restaurant"],
+  groceries: ["cart.fill", "shopping_cart"],
+  coffee: ["cup.and.saucer.fill", "local_cafe"],
+  transport: ["car.fill", "directions_car"],
+  commute: ["bus.fill", "directions_bus"],
+  fuel: ["fuelpump.fill", "local_gas_station"],
+  house: ["house.fill", "home"],
+  bills: ["bolt.fill", "bolt"],
+  water: ["drop.fill", "water_drop"],
+  phone: ["iphone", "smartphone"],
+  internet: ["wifi", "wifi"],
+  health: ["cross.case.fill", "medical_services"],
+  fitness: ["figure.run", "fitness_center"],
+  shopping: ["bag.fill", "shopping_bag"],
+  clothes: ["tshirt.fill", "checkroom"],
+  fun: ["film.fill", "movie"],
+  games: ["gamecontroller.fill", "sports_esports"],
+  education: ["book.fill", "menu_book"],
+  gifts: ["gift.fill", "redeem"],
+  travel: ["airplane", "flight"],
+  pets: ["pawprint.fill", "pets"],
+  family: ["person.2.fill", "group"],
+  savings: ["banknote.fill", "savings"],
+  subscriptions: ["arrow.triangle.2.circlepath", "autorenew"],
+};
+
 const ICONS = {
+  ...CATEGORY_GLYPHS,
   home: ["house.fill", "home"],
   history: ["clock.fill", "history"],
   wallet: ["wallet.bifold.fill", "account_balance_wallet"],
-  tag: ["tag.fill", "sell"],
   settings: ["gearshape.fill", "settings"],
   add: ["plus", "add"],
   expense: ["arrow.up.right", "north_east"],
@@ -36,6 +69,10 @@ const ICONS = {
   download: ["square.and.arrow.down", "download"],
   lock: ["lock.fill", "lock"],
   trash: ["trash.fill", "delete"],
+  down: ["chevron.down", "expand_more"],
+  close: ["xmark", "close"],
+  search: ["magnifyingglass", "search"],
+  check: ["checkmark.circle.fill", "check_circle"],
 } satisfies Record<string, [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;
@@ -233,36 +270,138 @@ export function Segmented<T extends string>({
   );
 }
 
-// Like Segmented, but wraps onto multiple lines for longer lists (accounts, categories).
-export function Choice({
+export type SelectOption = { value: number; label: string; icon?: IconName };
+
+// Dropdown that opens a searchable list, so long lists of accounts or categories don't stretch the form.
+export function Select({
   label,
   options,
   value,
   onChange,
 }: {
   label: string;
-  options: readonly { value: number; label: string }[];
+  options: readonly SelectOption[];
   value: number | null;
   onChange: (value: number) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { text, muted, tint } = useColors();
+  const selected = options.find((o) => o.value === value);
+  const q = query.trim().toLowerCase();
+  const matches = options.filter((o) => o.label.toLowerCase().includes(q));
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <View className="gap-1.5">
+      <Label>{label}</Label>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${selected?.label ?? "none chosen"}`}
+        onPress={() => setOpen(true)}
+        className="flex-row items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 active:opacity-70 dark:border-line-dark dark:bg-surface-dark"
+      >
+        {selected?.icon && <Icon name={selected.icon} color={tint} size={20} />}
+        <Text
+          numberOfLines={1}
+          className={`flex-1 text-base ${selected ? "font-regular text-ink dark:text-white" : "font-regular text-muted dark:text-muted-dark"}`}
+        >
+          {selected?.label ?? "Choose…"}
+        </Text>
+        <Icon name="down" color={muted} size={18} />
+      </Pressable>
+
+      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+        {/* Modals render outside the app's provider tree, so they need their own for insets. */}
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+            <View className="flex-1 gap-3 bg-canvas p-4 dark:bg-canvas-dark">
+              <View className="flex-row items-center justify-between">
+                <Text accessibilityRole="header" className="font-semibold text-lg text-ink dark:text-white">
+                  {label}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  onPress={close}
+                  className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
+                >
+                  <Icon name="close" color={text} />
+                </Pressable>
+              </View>
+              <Field label="Search" value={query} onChangeText={setQuery} autoCorrect={false} placeholder="Type to filter" />
+              <FlatList
+                data={matches}
+                keyExtractor={(o) => String(o.value)}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets
+                accessibilityRole="radiogroup"
+                contentContainerClassName="gap-2 pb-4"
+                renderItem={({ item }) => {
+                  const active = item.value === value;
+                  return (
+                    <Pressable
+                      accessibilityRole="radio"
+                      accessibilityLabel={item.label}
+                      aria-checked={active}
+                      onPress={() => {
+                        onChange(item.value);
+                        close();
+                      }}
+                      className={`flex-row items-center gap-3 rounded-2xl px-4 py-3.5 ${active ? "bg-sea" : "bg-surface dark:bg-surface-dark"}`}
+                    >
+                      {item.icon && <Icon name={item.icon} color={active ? palette.ink : tint} size={20} />}
+                      <Text
+                        numberOfLines={1}
+                        className={`flex-1 text-base ${active ? "font-medium text-ink" : "font-regular text-ink dark:text-white"}`}
+                      >
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+                ListEmptyComponent={<Muted>{`Nothing matches “${query}”.`}</Muted>}
+              />
+            </View>
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </Modal>
+    </View>
+  );
+}
+
+// Grid of category icons to pick from.
+export function IconPicker<T extends IconName>({
+  label,
+  icons,
+  value,
+  onChange,
+}: {
+  label: string;
+  icons: readonly T[];
+  value: T;
+  onChange: (icon: T) => void;
+}) {
+  const { tint } = useColors();
   return (
     <View className="gap-1.5">
       <Label>{label}</Label>
       <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-2">
-        {options.map((o) => {
-          const active = o.value === value;
+        {icons.map((name) => {
+          const active = name === value;
           return (
             <Pressable
-              key={o.value}
+              key={name}
               accessibilityRole="radio"
-              accessibilityLabel={o.label}
+              accessibilityLabel={name}
               aria-checked={active}
-              onPress={() => onChange(o.value)}
-              className={`rounded-full border px-4 py-2 ${active ? "border-sea bg-sea" : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark"}`}
+              onPress={() => onChange(name)}
+              className={`h-12 w-12 items-center justify-center rounded-2xl border ${active ? "border-sea bg-sea" : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark"}`}
             >
-              <Text className={active ? "font-medium text-ink" : "font-regular text-ink dark:text-white"}>
-                {o.label}
-              </Text>
+              <Icon name={name} color={active ? palette.ink : tint} size={22} />
             </Pressable>
           );
         })}

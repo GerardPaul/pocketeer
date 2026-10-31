@@ -1,8 +1,9 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { type CategoryIcon, toCategoryIcon } from "@/lib/category-icons";
 import type { Account, Category, CategoryBudget, NewTransaction, Transaction } from "@/lib/ledger";
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -51,6 +52,9 @@ export async function migrate(db: SQLiteDatabase) {
       CREATE INDEX transactions_date ON transactions (date);
     `);
   }
+  if (version < 2) {
+    await db.execAsync("ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT 'tag';");
+  }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
@@ -94,16 +98,17 @@ export async function deleteAccount(db: SQLiteDatabase, id: number) {
 // The budget applies from `month` on; earlier months keep whatever budget they had.
 export async function saveCategory(
   db: SQLiteDatabase,
-  c: { id?: number; name: string },
+  c: { id?: number; name: string; icon: CategoryIcon },
   budget: number,
   month: string,
 ) {
   await db.withTransactionAsync(async () => {
     let id = c.id;
     if (id === undefined) {
-      id = (await db.runAsync("INSERT INTO categories (name) VALUES (?)", c.name.trim())).lastInsertRowId;
+      id = (await db.runAsync("INSERT INTO categories (name, icon) VALUES (?, ?)", c.name.trim(), c.icon))
+        .lastInsertRowId;
     } else {
-      await db.runAsync("UPDATE categories SET name = ? WHERE id = ?", c.name.trim(), id);
+      await db.runAsync("UPDATE categories SET name = ?, icon = ? WHERE id = ?", c.name.trim(), c.icon, id);
     }
     await db.runAsync(
       `INSERT INTO category_budgets (category_id, month, amount) VALUES (?, ?, ?)
@@ -180,7 +185,7 @@ export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "curre
       );
     }
     for (const c of data.categories) {
-      await db.runAsync("INSERT INTO categories (id, name) VALUES (?, ?)", c.id, c.name);
+      await db.runAsync("INSERT INTO categories (id, name, icon) VALUES (?, ?, ?)", c.id, c.name, c.icon);
     }
     for (const b of data.budgets) {
       await db.runAsync(
@@ -207,5 +212,12 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
     db.getAllAsync<Transaction>("SELECT * FROM transactions ORDER BY date DESC, id DESC"),
   ]);
-  return { currency: setting?.value ?? null, accounts, categories, budgets, transactions };
+  return {
+    currency: setting?.value ?? null,
+    accounts,
+    // The column is plain text, so an unknown name falls back instead of breaking the icon lookup.
+    categories: categories.map((c) => ({ ...c, icon: toCategoryIcon(c.icon) })),
+    budgets,
+    transactions,
+  };
 }

@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
+import { useToast } from "@/components/toast";
 import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, Muted, Segmented } from "@/components/ui";
 import { deleteAccount, saveAccount } from "@/db/db";
 import { type Account, type AccountType, validateAccount } from "@/lib/ledger";
@@ -40,6 +41,7 @@ function AccountForm({
     existing?.credit_limit != null ? toInputString(existing.credit_limit, currency) : "",
   );
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/accounts"));
   // Blank starting amount means 0, so only the name and (for cards) the limit are required.
@@ -67,6 +69,7 @@ function AccountForm({
     try {
       await saveAccount(db, { ...account, id: existing?.id });
       close();
+      toast(existing ? "Account updated" : "Account added");
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -78,6 +81,7 @@ function AccountForm({
     try {
       await deleteAccount(db, existing.id);
       close();
+      toast("Account deleted");
     } catch (e) {
       setError(`Couldn't delete: ${String(e)}`);
     }

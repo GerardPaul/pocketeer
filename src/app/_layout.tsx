@@ -11,6 +11,7 @@ import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 
+import { ToastProvider } from "@/components/toast";
 import { loadTheme, migrate } from "@/db/db";
 import palette from "@/lib/palette";
 
@@ -84,14 +85,16 @@ function AppStack() {
 
   return (
     <ThemeProvider value={scheme === "dark" ? dark : light}>
-      <Stack screenOptions={{ headerShadowVisible: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
-        <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
-        {/* Default titles cover loading and empty states; the forms set a more specific one. */}
-        <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
-        <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
-        <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
-      </Stack>
+      <ToastProvider>
+        <Stack screenOptions={{ headerShadowVisible: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+          <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
+          {/* Default titles cover loading and empty states; the forms set a more specific one. */}
+          <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
+          <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
+          <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
+        </Stack>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

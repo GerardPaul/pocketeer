@@ -6,7 +6,7 @@ const sample: Backup = {
     { id: 1, name: "Cash", type: "regular", starting_amount: 100000, credit_limit: null },
     { id: 2, name: "Visa", type: "credit_card", starting_amount: 0, credit_limit: 300000 },
   ],
-  categories: [{ id: 1, name: "Food" }],
+  categories: [{ id: 1, name: "Food", icon: "food" }],
   budgets: [{ category_id: 1, month: "2026-10", amount: 800000 }],
   transactions: [
     { id: 1, type: "expense", amount: 30000, date: "2026-10-31", note: "Lunch", account_id: 1, to_account_id: null, category_id: 1 },
@@ -21,6 +21,14 @@ const parse = (obj: unknown) => parseBackup(JSON.stringify(obj));
 test("export then import round-trips the data", () => {
   const result = parseBackup(toBackupJson(sample, new Date("2026-10-31T00:00:00Z")));
   expect(result).toEqual({ ok: true, backup: sample });
+});
+
+test("category icons are optional and unknown ones fall back to the default", () => {
+  const b = json();
+  delete b.categories[0].icon;
+  expect(parse(b)).toMatchObject({ ok: true, backup: { categories: [{ icon: "tag" }] } });
+  b.categories[0].icon = "<script>";
+  expect(parse(b)).toMatchObject({ ok: true, backup: { categories: [{ icon: "tag" }] } });
 });
 
 test("rejects files that aren't Pocketeer backups", () => {

@@ -1,8 +1,10 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
-import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, Muted } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, IconPicker, Muted } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/db/db";
+import { CATEGORY_ICONS, type CategoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/category-icons";
 import { type Category, budgetFor, currentMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
 import { useData } from "@/lib/use-data";
@@ -30,8 +32,10 @@ function CategoryForm({
   const month = currentMonth();
   const current = existing ? budgetFor(existing.id, month, data.budgets) : null;
   const [name, setName] = useState(existing?.name ?? "");
+  const [icon, setIcon] = useState<CategoryIcon>(existing?.icon ?? DEFAULT_CATEGORY_ICON);
   const [budget, setBudget] = useState(current === null ? "" : toInputString(current, currency));
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/categories"));
   const amount = parseAmount(budget, currency);
@@ -42,8 +46,9 @@ function CategoryForm({
     if (!name.trim()) return setError("Enter a name.");
     if (amount === null) return setError("Enter a valid monthly budget.");
     try {
-      await saveCategory(db, { id: existing?.id, name }, amount, month);
+      await saveCategory(db, { id: existing?.id, name, icon }, amount, month);
       close();
+      toast(existing ? "Category updated" : "Category added");
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -55,6 +60,7 @@ function CategoryForm({
     try {
       await deleteCategory(db, existing.id);
       close();
+      toast("Category deleted");
     } catch (e) {
       setError(`Couldn't delete: ${String(e)}`);
     }
@@ -64,6 +70,7 @@ function CategoryForm({
     <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit category" : "New category" }} />
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Food" />
+      <IconPicker label="Icon" icons={CATEGORY_ICONS} value={icon} onChange={setIcon} />
       <Field
         label="Monthly budget"
         value={budget}

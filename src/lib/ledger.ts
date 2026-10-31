@@ -1,3 +1,5 @@
+import type { CategoryIcon } from "@/lib/category-icons";
+
 export type AccountType = "regular" | "credit_card";
 export type TransactionType = "expense" | "income" | "transfer";
 
@@ -10,7 +12,7 @@ export type Account = {
   credit_limit: number | null;
 };
 
-export type Category = { id: number; name: string };
+export type Category = { id: number; name: string; icon: CategoryIcon };
 
 // The budget in effect from `month` (YYYY-MM) onward, until a later row replaces it.
 export type CategoryBudget = { category_id: number; month: string; amount: number };

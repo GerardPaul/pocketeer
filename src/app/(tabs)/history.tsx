@@ -2,8 +2,8 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { BudgetRow } from "@/components/budget-row";
-import { Card, ErrorText, Heading, Icon, type IconName, Muted, useColors } from "@/components/ui";
+import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
+import { ErrorText, Heading, Icon, type IconName, Muted, useColors } from "@/components/ui";
 import { budgetFor, currentMonth, formatMonth, shiftMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import palette from "@/lib/palette";
@@ -36,6 +36,8 @@ function MonthButton({
 }
 
 const TYPE_ICON = { expense: "expense", income: "income", transfer: "transfer" } as const;
+// Circle color tells the type apart at a glance; ink icons stay readable on all three.
+const TYPE_CIRCLE = { expense: "bg-red-300", income: "bg-accent", transfer: "bg-white" } as const;
 
 export default function History() {
   const { data, error } = useData();
@@ -44,7 +46,7 @@ export default function History() {
   const currency = data.currency;
 
   const names = new Map(data.accounts.map((a) => [a.id, a.name]));
-  const categories = new Map(data.categories.map((c) => [c.id, c.name]));
+  const categories = new Map(data.categories.map((c) => [c.id, c]));
   const txs = data.transactions.filter((t) => t.date.startsWith(month));
 
   return (
@@ -64,17 +66,15 @@ export default function History() {
       </View>
 
       <Heading>Budgets</Heading>
-      {data.categories.map((c) => {
-        const spent = spentFor(c.id, month, data.transactions);
-        const budget = budgetFor(c.id, month, data.budgets);
-        // Skip categories that didn't exist yet and weren't used that month.
-        if (budget === null && spent === 0) return null;
-        return (
-          <Card key={c.id}>
-            <BudgetRow name={c.name} spent={spent} budget={budget} currency={currency} />
-          </Card>
-        );
-      })}
+      <BudgetGrid>
+        {data.categories.map((c) => {
+          const spent = spentFor(c.id, month, data.transactions);
+          const budget = budgetFor(c.id, month, data.budgets);
+          // Skip categories that didn't exist yet and weren't used that month.
+          if (budget === null && spent === 0) return null;
+          return <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={spent} budget={budget} currency={currency} />;
+        })}
+      </BudgetGrid>
 
       <View className="mt-3 gap-1 rounded-3xl bg-primary p-4">
         <Text accessibilityRole="header" className="px-1 pb-1 font-semibold text-lg text-white">
@@ -86,7 +86,7 @@ export default function History() {
         {txs.map((t) => {
           const title =
             t.type === "expense"
-              ? (categories.get(t.category_id ?? -1) ?? "Expense")
+              ? (categories.get(t.category_id ?? -1)?.name ?? "Expense")
               : t.type === "income"
                 ? "Income"
                 : "Transfer";
@@ -102,8 +102,12 @@ export default function History() {
               onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: t.id } })}
               className="flex-row items-center gap-3 rounded-2xl p-2 active:bg-white/10"
             >
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-white">
-                <Icon name={TYPE_ICON[t.type]} color={palette.primary} size={20} />
+              <View className={`h-11 w-11 items-center justify-center rounded-full ${TYPE_CIRCLE[t.type]}`}>
+                <Icon
+                  name={(t.type === "expense" && categories.get(t.category_id ?? -1)?.icon) || TYPE_ICON[t.type]}
+                  color={palette.ink}
+                  size={20}
+                />
               </View>
               <View className="flex-1">
                 <Text numberOfLines={1} className="font-semibold text-base text-white">

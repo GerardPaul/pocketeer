@@ -26,7 +26,7 @@ export default function Categories() {
         return (
           <Card key={c.id} onPress={() => router.push({ pathname: "/category/[id]", params: { id: c.id } })}>
             <View className="flex-row items-center gap-3">
-              <IconBadge name="tag" color={tint} />
+              <IconBadge name={c.icon} color={tint} />
               <View className="flex-1">
                 <Text numberOfLines={1} className="font-semibold text-base text-ink dark:text-white">
                   {c.name}

@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
-import { BudgetRow } from "@/components/budget-row";
+import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
@@ -75,16 +75,18 @@ export default function Home() {
           <Muted>No categories yet. Tap to add one, like Food or Transport.</Muted>
         </Card>
       )}
-      {data.categories.map((c) => (
-        <Card key={c.id}>
-          <BudgetRow
+      <BudgetGrid>
+        {data.categories.map((c) => (
+          <BudgetTile
+            key={c.id}
             name={c.name}
+            icon={c.icon}
             spent={spentFor(c.id, month, data.transactions)}
             budget={budgetFor(c.id, month, data.budgets)}
             currency={currency}
           />
-        </Card>
-      ))}
+        ))}
+      </BudgetGrid>
     </ScrollView>
   );
 }

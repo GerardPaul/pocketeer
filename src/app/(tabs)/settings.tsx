@@ -3,6 +3,7 @@ import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
 import { clearAllData, replaceAllData, saveTheme, type Theme } from "@/db/db";
 import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
@@ -14,11 +15,11 @@ const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? on
 
 export default function Settings() {
   const { db, data, error, reload } = useData();
-  const [message, setMessage] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, setPending] = useState<Backup | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const { muted } = useColors();
+  const toast = useToast();
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
@@ -35,14 +36,13 @@ export default function Settings() {
 
   async function exportData() {
     setProblem(null);
-    setMessage(null);
     try {
       const now = new Date();
       await shareBackupFile(
         `pocketeer-backup-${toDateString(now)}.json`,
         toBackupJson({ currency, accounts, categories, budgets, transactions }, now),
       );
-      setMessage("Backup created.");
+      toast("Backup created");
     } catch (e) {
       setProblem(`Export failed: ${String(e)}`);
     }
@@ -50,7 +50,6 @@ export default function Settings() {
 
   async function chooseFile() {
     setProblem(null);
-    setMessage(null);
     try {
       const text = await pickBackupFile();
       if (text === null) return;
@@ -67,7 +66,7 @@ export default function Settings() {
     try {
       await replaceAllData(db, pending);
       setPending(null);
-      setMessage("Import complete. Your data was replaced.");
+      toast("Import complete, your data was replaced");
       reload();
     } catch (e) {
       setProblem(`Import failed, nothing was changed: ${String(e)}`);
@@ -79,6 +78,7 @@ export default function Settings() {
       await clearAllData(db);
       setConfirmingClear(false);
       router.replace("/welcome");
+      toast("All data cleared");
     } catch (e) {
       setProblem(`Clearing failed, nothing was changed: ${String(e)}`);
     }
@@ -148,14 +148,12 @@ export default function Settings() {
           variant="secondary"
           onPress={() => {
             setProblem(null);
-            setMessage(null);
             setConfirmingClear(true);
           }}
         />
       )}
 
       <ErrorText>{problem}</ErrorText>
-      {message && <Text className="font-medium text-sm text-emerald-700 dark:text-emerald-400">{message}</Text>}
     </ScrollView>
   );
 }

@@ -7,6 +7,7 @@ import {
   transactionShapeProblem,
   validateAccount,
 } from "@/lib/ledger";
+import { toCategoryIcon } from "@/lib/category-icons";
 import { isValidCurrency } from "@/lib/money";
 
 const APP = "pocketeer";
@@ -73,7 +74,8 @@ export function parseBackup(text: string): Result {
     if (!isRecord(c) || !isId(c.id) || typeof c.name !== "string" || !c.name.trim()) {
       return fail("Backup has an invalid category.");
     }
-    categories.push({ id: c.id, name: c.name });
+    // Icons are cosmetic: older backups have none and unknown names fall back to the default.
+    categories.push({ id: c.id, name: c.name, icon: toCategoryIcon(c.icon) });
   }
 
   const budgets: CategoryBudget[] = [];
