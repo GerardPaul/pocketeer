@@ -1,4 +1,10 @@
+import { CURRENCIES } from "./currencies";
 import { currencyDigits, isValidCurrency, parseAmount, toInputString } from "./money";
+
+test("every listed currency is a real ISO code", () => {
+  for (const c of CURRENCIES) expect(isValidCurrency(c.code)).toBe(true);
+  expect(new Set(CURRENCIES.map((c) => c.code)).size).toBe(CURRENCIES.length);
+});
 
 test("currency decimal places follow the currency", () => {
   expect(currencyDigits("PHP")).toBe(2);

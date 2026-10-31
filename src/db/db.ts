@@ -63,6 +63,14 @@ export type Data = {
   transactions: Transaction[];
 };
 
+// DO NOTHING keeps the first choice: currency is locked once set.
+export async function setCurrency(db: SQLiteDatabase, code: string) {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('currency', ?) ON CONFLICT (key) DO NOTHING",
+    code,
+  );
+}
+
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
   const [setting, accounts, categories, budgets, transactions] = await Promise.all([
