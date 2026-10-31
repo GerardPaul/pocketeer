@@ -146,6 +146,9 @@ None right now.
 - Transactions store a date only, no time.
 - App name is Pocketeer.
 - Downgraded from Expo SDK 58 to 57 so the App Store Expo Go can run it.
+- Web build is for local testing only (single-page output, light theme only, text date field, download instead of share sheet).
+- Import validates the whole file (fields, references, balance rules) before replacing anything, and replaces in one database transaction.
+- Tabs are text-only for now (no icon library).
 
 ## 9. Next steps
 
@@ -156,4 +159,5 @@ None right now.
 5. ~~Tech stack~~ — see section 5
    - Environment checked: Node 22.23.3, npm 10.9.9, git 2.46
 6. ~~Project setup~~ — git repo (remote: github.com/GerardPaul/pocketeer), Expo app, libraries, NativeWind + dark mode
-7. First feature
+7. ~~MVP build~~ — on branch `feature/mvp`, one commit per step: database + money logic, currency setup, accounts, categories, transactions, dashboard, history, export/import
+8. Test on both phones in Expo Go, then merge `feature/mvp`
