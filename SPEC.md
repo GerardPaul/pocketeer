@@ -73,7 +73,8 @@ Examples:
 6. **Dashboard** — each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month.
 7. **Transaction list** — view, edit, delete past entries.
 8. **History** — browse previous months (category spent vs. budget per month).
-9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file.
+9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
+   - Clear all data deletes everything (currency included, so setup runs again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
 
 ## 4. Data model
@@ -151,6 +152,7 @@ None right now.
 - Web build is for local testing only (single-page output, text date field, download instead of share sheet).
 - Import validates the whole file (fields, references, balance rules) before replacing anything, and replaces in one database transaction.
 - Visual design: rounded cards, colored hero and account cards, inspired by a finance app mockup. Restyle only, no charts.
+- Clear all data also resets the currency, so the user can start over with a different one. The theme is kept.
 - Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import.
 - Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.

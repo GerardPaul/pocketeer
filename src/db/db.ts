@@ -154,17 +154,24 @@ export async function saveTheme(db: SQLiteDatabase, theme: Theme) {
   );
 }
 
+// The theme is a phone preference, not data, so it survives clearing and importing.
+const DELETE_ALL = `
+  DELETE FROM transactions;
+  DELETE FROM category_budgets;
+  DELETE FROM categories;
+  DELETE FROM accounts;
+  DELETE FROM settings WHERE key <> 'theme';
+`;
+
+// Removes everything, currency included, so the app starts over at setup.
+export async function clearAllData(db: SQLiteDatabase) {
+  await db.withTransactionAsync(() => db.execAsync(DELETE_ALL));
+}
+
 // Replaces everything in one transaction, so a failed import leaves the old data untouched.
-// The theme is a phone preference, not data, so it survives an import.
 export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "currency"> & { currency: string }) {
   await db.withTransactionAsync(async () => {
-    await db.execAsync(`
-      DELETE FROM transactions;
-      DELETE FROM category_budgets;
-      DELETE FROM categories;
-      DELETE FROM accounts;
-      DELETE FROM settings WHERE key <> 'theme';
-    `);
+    await db.execAsync(DELETE_ALL);
     await db.runAsync("INSERT INTO settings (key, value) VALUES ('currency', ?)", data.currency);
     for (const a of data.accounts) {
       await db.runAsync(

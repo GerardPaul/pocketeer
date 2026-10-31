@@ -23,6 +23,7 @@ const ICONS = {
   share: ["square.and.arrow.up", "ios_share"],
   download: ["square.and.arrow.down", "download"],
   lock: ["lock.fill", "lock"],
+  trash: ["trash.fill", "delete"],
 } satisfies Record<string, [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;

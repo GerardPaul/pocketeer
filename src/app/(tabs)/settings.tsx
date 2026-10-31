@@ -1,19 +1,23 @@
+import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
-import { replaceAllData, saveTheme, type Theme } from "@/db/db";
+import { clearAllData, replaceAllData, saveTheme, type Theme } from "@/db/db";
 import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
 import { pickBackupFile, shareBackupFile } from "@/lib/backup-file";
 import { toDateString } from "@/lib/ledger";
 import { useData } from "@/lib/use-data";
+
+const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export default function Settings() {
   const { db, data, error, reload } = useData();
   const [message, setMessage] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, setPending] = useState<Backup | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const { muted } = useColors();
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
@@ -70,6 +74,16 @@ export default function Settings() {
     }
   }
 
+  async function confirmClear() {
+    try {
+      await clearAllData(db);
+      setConfirmingClear(false);
+      router.replace("/setup");
+    } catch (e) {
+      setProblem(`Clearing failed, nothing was changed: ${String(e)}`);
+    }
+  }
+
   return (
     <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
       <Card>
@@ -102,15 +116,42 @@ export default function Settings() {
         <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
           <Text className="font-bold text-base text-red-600 dark:text-red-400">This will replace ALL your data</Text>
           <Muted>
-            Everything currently in the app ({accounts.length} accounts, {transactions.length} transactions) will be
-            deleted and replaced with the file’s {pending.accounts.length} accounts and {pending.transactions.length}{" "}
-            transactions in {pending.currency}. This can’t be undone. Export first if you want to keep a copy.
+            Everything currently in the app ({count(accounts.length, "account")},{" "}
+            {count(transactions.length, "transaction")}) will be deleted and replaced with the file’s{" "}
+            {count(pending.accounts.length, "account")} and {count(pending.transactions.length, "transaction")} in{" "}
+            {pending.currency}. This can’t be undone. Export first if you want to keep a copy.
           </Muted>
           <Button title="Replace my data" variant="danger" onPress={confirmImport} />
           <Button title="Cancel" variant="secondary" onPress={() => setPending(null)} />
         </View>
       ) : (
         <Button title="Import data" icon="download" variant="secondary" onPress={chooseFile} />
+      )}
+
+      <Heading>Clear data</Heading>
+      <Muted>Deletes every account, category, budget and transaction, and resets the currency.</Muted>
+      {confirmingClear ? (
+        <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
+          <Text className="font-bold text-base text-red-600 dark:text-red-400">This will delete ALL your data</Text>
+          <Muted>
+            {count(accounts.length, "account")}, {count(categories.length, "category", "categories")}{" "}
+            and {count(transactions.length, "transaction")} will be removed, and you’ll pick a currency again. This
+            can’t be undone. Export first if you want to keep a copy.
+          </Muted>
+          <Button title="Delete everything" variant="danger" onPress={confirmClear} />
+          <Button title="Cancel" variant="secondary" onPress={() => setConfirmingClear(false)} />
+        </View>
+      ) : (
+        <Button
+          title="Clear all data"
+          icon="trash"
+          variant="secondary"
+          onPress={() => {
+            setProblem(null);
+            setMessage(null);
+            setConfirmingClear(true);
+          }}
+        />
       )}
 
       <ErrorText>{problem}</ErrorText>
