@@ -139,6 +139,42 @@ export async function deleteTransaction(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM transactions WHERE id = ?", id);
 }
 
+// Replaces everything in one transaction, so a failed import leaves the old data untouched.
+export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "currency"> & { currency: string }) {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      DELETE FROM transactions;
+      DELETE FROM category_budgets;
+      DELETE FROM categories;
+      DELETE FROM accounts;
+      DELETE FROM settings;
+    `);
+    await db.runAsync("INSERT INTO settings (key, value) VALUES ('currency', ?)", data.currency);
+    for (const a of data.accounts) {
+      await db.runAsync(
+        "INSERT INTO accounts (id, name, type, starting_amount, credit_limit) VALUES (?, ?, ?, ?, ?)",
+        a.id, a.name, a.type, a.starting_amount, a.credit_limit,
+      );
+    }
+    for (const c of data.categories) {
+      await db.runAsync("INSERT INTO categories (id, name) VALUES (?, ?)", c.id, c.name);
+    }
+    for (const b of data.budgets) {
+      await db.runAsync(
+        "INSERT INTO category_budgets (category_id, month, amount) VALUES (?, ?, ?)",
+        b.category_id, b.month, b.amount,
+      );
+    }
+    for (const t of data.transactions) {
+      await db.runAsync(
+        `INSERT INTO transactions (id, type, amount, date, note, account_id, to_account_id, category_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        t.id, t.type, t.amount, t.date, t.note, t.account_id, t.to_account_id, t.category_id,
+      );
+    }
+  });
+}
+
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
   const [setting, accounts, categories, budgets, transactions] = await Promise.all([

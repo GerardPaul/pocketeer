@@ -65,11 +65,8 @@ export function ledgerProblem(
   return null;
 }
 
-export function validateTransaction(
-  tx: NewTransaction,
-  accounts: readonly Account[],
-  txs: readonly Transaction[],
-): string | null {
+// Field rules for one transaction, without looking at balances.
+export function transactionShapeProblem(tx: NewTransaction, accounts: readonly Account[]): string | null {
   if (!Number.isSafeInteger(tx.amount) || tx.amount <= 0) return "Enter an amount above 0.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tx.date)) return "Pick a date.";
   if (!accounts.some((a) => a.id === tx.account_id)) return "Pick an account.";
@@ -81,6 +78,16 @@ export function validateTransaction(
   } else if (tx.to_account_id !== null) {
     return "Only transfers have a destination account.";
   }
+  return null;
+}
+
+export function validateTransaction(
+  tx: NewTransaction,
+  accounts: readonly Account[],
+  txs: readonly Transaction[],
+): string | null {
+  const shape = transactionShapeProblem(tx, accounts);
+  if (shape) return shape;
 
   const old = tx.id === undefined ? undefined : txs.find((t) => t.id === tx.id);
   const next = [...txs.filter((t) => t.id !== tx.id), tx];
