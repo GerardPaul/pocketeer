@@ -1,8 +1,9 @@
+import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
-import { replaceAllData } from "@/db/db";
+import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
+import { replaceAllData, saveTheme, type Theme } from "@/db/db";
 import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
 import { pickBackupFile, shareBackupFile } from "@/lib/backup-file";
 import { toDateString } from "@/lib/ledger";
@@ -14,9 +15,19 @@ export default function Settings() {
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, setPending] = useState<Backup | null>(null);
   const { muted } = useColors();
+  const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const { currency, accounts, categories, budgets, transactions } = data;
+
+  async function changeTheme(theme: Theme) {
+    colorScheme.set(theme);
+    try {
+      await saveTheme(db, theme);
+    } catch (e) {
+      setProblem(`Couldn't save the theme: ${String(e)}`);
+    }
+  }
 
   async function exportData() {
     setProblem(null);
@@ -71,6 +82,17 @@ export default function Settings() {
         </View>
         <Muted>Set at first launch and can’t be changed.</Muted>
       </Card>
+
+      <Heading>Appearance</Heading>
+      <Segmented
+        label="Theme"
+        options={[
+          { value: "light", label: "Light" },
+          { value: "dark", label: "Dark" },
+        ]}
+        value={scheme}
+        onChange={changeTheme}
+      />
 
       <Heading>Backup</Heading>
       <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>

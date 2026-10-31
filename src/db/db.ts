@@ -139,7 +139,23 @@ export async function deleteTransaction(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM transactions WHERE id = ?", id);
 }
 
+export type Theme = "light" | "dark";
+
+// Light unless the user picked dark in Settings.
+export async function loadTheme(db: SQLiteDatabase): Promise<Theme> {
+  const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'theme'");
+  return row?.value === "dark" ? "dark" : "light";
+}
+
+export async function saveTheme(db: SQLiteDatabase, theme: Theme) {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('theme', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    theme,
+  );
+}
+
 // Replaces everything in one transaction, so a failed import leaves the old data untouched.
+// The theme is a phone preference, not data, so it survives an import.
 export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "currency"> & { currency: string }) {
   await db.withTransactionAsync(async () => {
     await db.execAsync(`
@@ -147,7 +163,7 @@ export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "curre
       DELETE FROM category_budgets;
       DELETE FROM categories;
       DELETE FROM accounts;
-      DELETE FROM settings;
+      DELETE FROM settings WHERE key <> 'theme';
     `);
     await db.runAsync("INSERT INTO settings (key, value) VALUES ('currency', ?)", data.currency);
     for (const a of data.accounts) {

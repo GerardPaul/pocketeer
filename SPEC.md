@@ -73,7 +73,7 @@ Examples:
 6. **Dashboard** — each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month.
 7. **Transaction list** — view, edit, delete past entries.
 8. **History** — browse previous months (category spent vs. budget per month).
-9. **Settings** — show currency (chosen at first launch, locked); export data to a file; import data from a file.
+9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
 
 ## 4. Data model
@@ -105,7 +105,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Navigation | Expo Router |
 | Database | `expo-sqlite` |
 | Styling | NativeWind 4.2.7 + Tailwind CSS 3 on plain React Native components; no UI kit |
-| Theme | Light and dark mode from day one, following the phone's setting. Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
+| Theme | Light by default; Settings has a light/dark toggle, saved on the device (`settings` table, key `theme`). Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
 | Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
 | Icons | `expo-symbols` (SF Symbols on iOS, Material Symbols on Android/web); no icon library |
 | Currency formatting | `Intl.NumberFormat` (built in) |
@@ -151,6 +151,7 @@ None right now.
 - Web build is for local testing only (single-page output, text date field, download instead of share sheet).
 - Import validates the whole file (fields, references, balance rules) before replacing anything, and replaces in one database transaction.
 - Visual design: rounded cards, colored hero and account cards, inspired by a finance app mockup. Restyle only, no charts.
+- Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import.
 - Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
 

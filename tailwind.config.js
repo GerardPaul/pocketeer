@@ -4,8 +4,7 @@ const palette = require("./src/lib/palette");
 module.exports = {
   content: ["./src/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
-  // Native always follows the phone's light/dark setting. "media" crashes NativeWind 4's web runtime in dev,
-  // so "class" is used; the root layout sets the class on web from the system setting.
+  // "class" lets the app set light/dark itself (Settings toggle, light by default); the root layout applies it.
   darkMode: "class",
   theme: {
     // Each Poppins weight is its own font family (Android can't pick weights of a custom font),

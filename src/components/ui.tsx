@@ -1,6 +1,7 @@
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
+import { useColorScheme } from "nativewind";
 import { type ReactNode, useState } from "react";
-import { type ColorValue, Pressable, Text, TextInput, type TextInputProps, useColorScheme, View } from "react-native";
+import { type ColorValue, Pressable, Text, TextInput, type TextInputProps, View } from "react-native";
 
 import palette from "@/lib/palette";
 
@@ -34,7 +35,7 @@ export function Icon({ name, color, size = 22 }: { name: IconName; color: ColorV
 
 // Raw colors for things classes can't reach (icon tints).
 export function useColors() {
-  const dark = useColorScheme() === "dark";
+  const dark = useColorScheme().colorScheme === "dark";
   return {
     text: dark ? "#FFFFFF" : palette.ink,
     muted: dark ? palette.mutedDark : palette.muted,

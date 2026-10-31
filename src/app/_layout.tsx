@@ -7,11 +7,11 @@ import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 import { useFonts } from "expo-font";
 import { DarkTheme, DefaultTheme, Stack, type Theme, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { SQLiteProvider } from "expo-sqlite";
-import { useEffect } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { colorScheme, useColorScheme } from "nativewind";
+import { useEffect, useState } from "react";
 
-import { migrate } from "@/db/db";
+import { loadTheme, migrate } from "@/db/db";
 import palette from "@/lib/palette";
 
 SplashScreen.preventAutoHideAsync();
@@ -50,33 +50,47 @@ const dark: Theme = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [loaded, error] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold });
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();
   }, [loaded, error]);
 
-  // NativeWind's web CSS only applies dark: classes under a `dark` class on <html>; keep it in step with the
-  // system so the page matches the navigator chrome. Native follows the system on its own.
-  useEffect(() => {
-    if (Platform.OS === "web") document.documentElement.classList.toggle("dark", colorScheme === "dark");
-  }, [colorScheme]);
-
   // On a font error, carry on with the system font rather than a blank screen.
   if (!loaded && !error) return null;
 
   return (
     <SQLiteProvider databaseName="pocketeer.db" onInit={migrate}>
-      <ThemeProvider value={colorScheme === "dark" ? dark : light}>
-        <Stack screenOptions={{ headerShadowVisible: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
-          {/* Default titles cover loading and empty states; the forms set a more specific one. */}
-          <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
-          <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
-          <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
-        </Stack>
-      </ThemeProvider>
+      <AppStack />
     </SQLiteProvider>
+  );
+}
+
+// NativeWind's color scheme drives both the dark: classes and, on native, the system appearance (pickers, alerts),
+// so the navigator theme reads it too. Light until the saved choice is loaded.
+function AppStack() {
+  const db = useSQLiteContext();
+  const { colorScheme: scheme } = useColorScheme();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    loadTheme(db)
+      .then((theme) => colorScheme.set(theme))
+      .catch(() => colorScheme.set("light")) // unreadable setting: fall back to the default
+      .finally(() => setReady(true));
+  }, [db]);
+
+  if (!ready) return null;
+
+  return (
+    <ThemeProvider value={scheme === "dark" ? dark : light}>
+      <Stack screenOptions={{ headerShadowVisible: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+        {/* Default titles cover loading and empty states; the forms set a more specific one. */}
+        <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
+        <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
+        <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
+      </Stack>
+    </ThemeProvider>
   );
 }
