@@ -39,7 +39,7 @@ export function accountAmount(account: Account, txs: readonly NewTransaction[]):
   return total;
 }
 
-export function accountProblem(account: Account, amount: number): string | null {
+function accountProblem(account: Account, amount: number): string | null {
   if (account.type === "regular") {
     return amount < 0 ? `${account.name} balance can't go below 0.` : null;
   }
@@ -52,7 +52,7 @@ export function accountProblem(account: Account, amount: number): string | null 
 
 // Checks the given accounts against a proposed list of all transactions.
 // ponytail: checks final balances only, not the running balance on each past date.
-export function ledgerProblem(
+function ledgerProblem(
   accounts: readonly Account[],
   txs: readonly NewTransaction[],
   accountIds: readonly (number | null)[],
