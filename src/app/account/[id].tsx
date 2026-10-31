@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView } from "react-native";
 
-import { Button, DeleteButton, ErrorText, Field, Muted, Segmented } from "@/components/ui";
+import { Button, DeleteButton, EmptyState, ErrorText, Field, Muted, Segmented } from "@/components/ui";
 import { deleteAccount, saveAccount } from "@/db/db";
 import { type Account, type AccountType, validateAccount } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
@@ -18,7 +18,7 @@ export default function AccountScreen() {
   const { db, data } = useData();
   if (!data?.currency) return null;
   const existing = data.accounts.find((a) => String(a.id) === id);
-  if (id !== "new" && !existing) return <Muted>Account not found.</Muted>;
+  if (id !== "new" && !existing) return <EmptyState message="This account no longer exists." />;
   // Remount the form once data arrives so its initial state comes from the saved account.
   return <AccountForm key={existing?.id ?? "new"} existing={existing} currency={data.currency} db={db} data={data} />;
 }

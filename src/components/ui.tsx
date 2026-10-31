@@ -59,6 +59,16 @@ export function Muted({ children }: { children: ReactNode }) {
   return <Text className="text-sm text-neutral-500 dark:text-neutral-400">{children}</Text>;
 }
 
+// Full-screen message for screens that have nothing to show yet.
+export function EmptyState({ message, action }: { message: string; action?: { title: string; onPress: () => void } }) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 bg-white p-6 dark:bg-neutral-900">
+      <Text className="text-center text-base text-neutral-500 dark:text-neutral-400">{message}</Text>
+      {action && <Button title={action.title} onPress={action.onPress} />}
+    </View>
+  );
+}
+
 // Two taps to delete. Inline instead of Alert so it behaves the same on every platform.
 export function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);

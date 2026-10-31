@@ -14,9 +14,10 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
-          <Stack.Screen name="account/[id]" options={{ presentation: "modal" }} />
-          <Stack.Screen name="category/[id]" options={{ presentation: "modal" }} />
-          <Stack.Screen name="transaction/[id]" options={{ presentation: "modal" }} />
+          {/* Default titles cover loading and empty states; the forms set a more specific one. */}
+          <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
+          <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
+          <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
         </Stack>
       </ThemeProvider>
     </SQLiteProvider>

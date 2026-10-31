@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView } from "react-native";
 
-import { Button, DeleteButton, ErrorText, Field, Muted } from "@/components/ui";
+import { Button, DeleteButton, EmptyState, ErrorText, Field, Muted } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/db/db";
 import { type Category, budgetFor, currentMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
@@ -13,7 +13,7 @@ export default function CategoryScreen() {
   const { db, data } = useData();
   if (!data?.currency) return null;
   const existing = data.categories.find((c) => String(c.id) === id);
-  if (id !== "new" && !existing) return <Muted>Category not found.</Muted>;
+  if (id !== "new" && !existing) return <EmptyState message="This category no longer exists." />;
   return <CategoryForm key={existing?.id ?? "new"} existing={existing} db={db} data={data} currency={data.currency} />;
 }
 

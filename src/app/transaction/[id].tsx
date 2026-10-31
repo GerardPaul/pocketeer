@@ -1,9 +1,9 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ScrollView } from "react-native";
+import { ScrollView, View } from "react-native";
 
 import { DateField } from "@/components/date-field";
-import { Button, Choice, DeleteButton, ErrorText, Field, Muted, Segmented } from "@/components/ui";
+import { Button, Choice, DeleteButton, EmptyState, ErrorText, Field, Muted, Segmented } from "@/components/ui";
 import { deleteTransaction, saveTransaction } from "@/db/db";
 import {
   type NewTransaction,
@@ -28,7 +28,18 @@ export default function TransactionScreen() {
   const { db, data } = useData();
   if (!data?.currency) return null;
   const existing = data.transactions.find((t) => String(t.id) === id);
-  if (id !== "new" && !existing) return <Muted>Transaction not found.</Muted>;
+  if (id !== "new" && !existing) return <EmptyState message="This transaction no longer exists." />;
+  if (data.accounts.length === 0) {
+    return (
+      <EmptyState
+        message="Add an account first, like cash, a bank or a credit card. Then you can log transactions."
+        action={{
+          title: "Add account",
+          onPress: () => router.push({ pathname: "/account/[id]", params: { id: "new" } }),
+        }}
+      />
+    );
+  }
   return <TransactionForm key={existing?.id ?? "new"} existing={existing} db={db} data={data} currency={data.currency} />;
 }
 
@@ -47,17 +58,15 @@ function TransactionForm({
   const [amount, setAmount] = useState(existing ? toInputString(existing.amount, currency) : "");
   const [accountId, setAccountId] = useState<number | null>(existing?.account_id ?? data.accounts[0]?.id ?? null);
   const [toAccountId, setToAccountId] = useState<number | null>(existing?.to_account_id ?? null);
-  const [categoryId, setCategoryId] = useState<number | null>(
-    existing?.category_id ?? data.categories[0]?.id ?? null,
-  );
+  const [pickedCategoryId, setCategoryId] = useState<number | null>(existing?.category_id ?? null);
+  // Falls back on render, so a category added from this screen gets picked once it exists.
+  const categoryId = pickedCategoryId ?? data.categories[0]?.id ?? null;
   const [date, setDate] = useState(existing?.date ?? toDateString(new Date()));
   const [note, setNote] = useState(existing?.note ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace(HOME));
   const accountOptions = data.accounts.map((a) => ({ value: a.id, label: a.name }));
-
-  if (data.accounts.length === 0) return <Muted>Add an account first.</Muted>;
 
   async function save() {
     const minor = parseAmount(amount, currency);
@@ -111,7 +120,14 @@ function TransactionForm({
       )}
       {type === "expense" &&
         (data.categories.length === 0 ? (
-          <Muted>Add a category first to log expenses.</Muted>
+          <View className="gap-2">
+            <Muted>Expenses need a category. Add one to log this expense.</Muted>
+            <Button
+              title="Add category"
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}
+            />
+          </View>
         ) : (
           <Choice
             label="Category"
