@@ -100,7 +100,7 @@ Storage: `expo-sqlite` (local database on the device).
 
 | Need | Choice |
 |---|---|
-| Framework | Expo SDK 58 (React Native 0.88) |
+| Framework | Expo SDK 57 (React Native 0.86) — App Store Expo Go only supports SDK 57 as of 2026-10-31; upgrade to 58 once it does |
 | Language | TypeScript |
 | Navigation | Expo Router |
 | Database | `expo-sqlite` |
@@ -112,7 +112,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Import | `expo-document-picker` |
 | App state | React state, reading from SQLite; no state library |
 | Testing | `jest-expo`, focused on money logic (balances, credit limits, monthly budgets) |
-| Dev testing | Expo Go on iPhone and Android |
+| Dev testing | Expo Go on iPhone and Android (Android: install the SDK 57 Expo Go from expo.dev/go) |
 | Store builds | EAS Build (later) |
 
 ## 6. Out of scope (for now)
@@ -145,6 +145,7 @@ None right now.
 - Amounts follow the currency's own decimal places.
 - Transactions store a date only, no time.
 - App name is Pocketeer.
+- Downgraded from Expo SDK 58 to 57 so the App Store Expo Go can run it.
 
 ## 9. Next steps
 
