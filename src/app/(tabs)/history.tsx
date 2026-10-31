@@ -63,7 +63,7 @@ export default function History() {
           Transactions
         </Text>
         {txs.length === 0 && (
-          <Text className="px-1 pb-2 font-regular text-sm text-white/90">Nothing logged this month.</Text>
+          <Text className="px-1 pb-2 font-regular text-sm text-white">Nothing logged this month.</Text>
         )}
         {txs.map((t) => {
           const title =
@@ -91,12 +91,12 @@ export default function History() {
                 <Text numberOfLines={1} className="font-semibold text-base text-white">
                   {title}
                 </Text>
-                <Text numberOfLines={1} className="font-regular text-sm text-white/90">
+                <Text numberOfLines={1} className="font-regular text-sm text-white">
                   {t.date} · {account}
                   {t.note ? ` · ${t.note}` : ""}
                 </Text>
               </View>
-              <Text className={`font-semibold text-base ${t.type === "income" ? "text-emerald-300" : "text-white"}`}>
+              <Text className="font-semibold text-base text-white">
                 {sign}
                 {formatMoney(t.amount, currency)}
               </Text>

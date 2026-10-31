@@ -39,7 +39,7 @@ export default function Setup() {
       <View className="gap-1 overflow-hidden rounded-3xl bg-primary p-6">
         <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
         <Text className="font-bold text-3xl text-white">Pocketeer</Text>
-        <Text className="pr-16 font-regular text-sm text-white/90">
+        <Text className="pr-16 font-regular text-sm text-white">
           Pick your currency. All amounts use it, and it can’t be changed later.
         </Text>
       </View>
@@ -58,10 +58,10 @@ export default function Setup() {
               onPress={() => setSelected(item.code)}
               className={`mb-1 flex-row items-center justify-between rounded-2xl px-4 py-3 ${active ? "bg-sea" : "bg-surface dark:bg-surface-dark"}`}
             >
-              <Text className={`flex-shrink font-medium text-base ${active ? "text-white" : "text-ink dark:text-white"}`}>
+              <Text className={`flex-shrink font-medium text-base ${active ? "text-ink" : "text-ink dark:text-white"}`}>
                 {item.code} · {item.name}
               </Text>
-              <Text className={`font-regular text-sm ${active ? "text-white" : "text-muted dark:text-muted-dark"}`}>
+              <Text className={`font-regular text-sm ${active ? "text-ink" : "text-muted dark:text-muted-dark"}`}>
                 {formatMoney(123456, item.code)}
               </Text>
             </Pressable>

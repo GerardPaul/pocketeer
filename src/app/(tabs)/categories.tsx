@@ -8,7 +8,7 @@ import { useData } from "@/lib/use-data";
 
 export default function Categories() {
   const { data, error } = useData();
-  const { sea } = useColors();
+  const { tint } = useColors();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
   const month = currentMonth();
@@ -26,7 +26,7 @@ export default function Categories() {
         return (
           <Card key={c.id} onPress={() => router.push({ pathname: "/category/[id]", params: { id: c.id } })}>
             <View className="flex-row items-center gap-3">
-              <IconBadge name="tag" color={sea} />
+              <IconBadge name="tag" color={tint} />
               <View className="flex-1">
                 <Text numberOfLines={1} className="font-semibold text-base text-ink dark:text-white">
                   {c.name}

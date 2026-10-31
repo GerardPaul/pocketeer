@@ -28,11 +28,11 @@ export default function Home() {
         <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
         <View className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sea/60" />
         <View>
-          <Text className="font-regular text-sm text-white/90">Money you have</Text>
+          <Text className="font-regular text-sm text-white">Money you have</Text>
           <Text className="font-bold text-4xl text-white">{formatMoney(cash, currency)}</Text>
         </View>
         <View className="flex-row items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
-          <Text className="font-regular text-sm text-white/90">Credit card debt</Text>
+          <Text className="font-regular text-sm text-white">Credit card debt</Text>
           <Text className="font-semibold text-base text-white">{formatMoney(owed, currency)}</Text>
         </View>
         <Button
@@ -50,7 +50,7 @@ export default function Home() {
           onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })}
           className="w-16 items-center justify-center rounded-3xl bg-sea/10 active:opacity-70 dark:bg-white/10"
         >
-          <Icon name="add" color={colors.sea} size={28} />
+          <Icon name="add" color={colors.tint} size={28} />
         </Pressable>
         {data.accounts.length === 0 && (
           <View className="w-64 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">

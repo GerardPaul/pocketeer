@@ -105,7 +105,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Navigation | Expo Router |
 | Database | `expo-sqlite` |
 | Styling | NativeWind 4.2.7 + Tailwind CSS 3 on plain React Native components; no UI kit |
-| Theme | Light and dark mode from day one, following the phone's setting. Palette in `src/lib/palette.js`: deep blue `#0F4C75` and teal `#0E7C86` main, coral `#FF7A59` accent (always with dark ink text, never white) |
+| Theme | Light and dark mode from day one, following the phone's setting. Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
 | Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
 | Icons | `expo-symbols` (SF Symbols on iOS, Material Symbols on Android/web); no icon library |
 | Currency formatting | `Intl.NumberFormat` (built in) |

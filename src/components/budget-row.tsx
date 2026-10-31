@@ -14,12 +14,12 @@ export function BudgetRow({
   budget: number | null;
   currency: string;
 }) {
-  const { sea } = useColors();
+  const { tint } = useColors();
   const over = budget !== null && spent > budget;
   const pct = budget ? Math.min(100, (spent / budget) * 100) : spent > 0 ? 100 : 0;
   return (
     <View className="flex-row items-center gap-3">
-      <IconBadge name="tag" color={sea} />
+      <IconBadge name="tag" color={tint} />
       <View className="flex-1 gap-1.5">
         <View className="flex-row items-center justify-between gap-2">
           <Text numberOfLines={1} className="flex-shrink font-semibold text-base text-ink dark:text-white">

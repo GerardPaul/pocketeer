@@ -39,7 +39,8 @@ export function useColors() {
     text: dark ? "#FFFFFF" : palette.ink,
     muted: dark ? palette.mutedDark : palette.muted,
     primary: dark ? palette.accent : palette.primary,
-    sea: palette.sea,
+    // Cyan icons are too faint on light surfaces, so light mode tints with the deep teal.
+    tint: dark ? palette.sea : palette.primary,
   };
 }
 
@@ -210,7 +211,7 @@ export function Choice({
               onPress={() => onChange(o.value)}
               className={`rounded-full border px-4 py-2 ${active ? "border-sea bg-sea" : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark"}`}
             >
-              <Text className={active ? "font-medium text-white" : "font-regular text-ink dark:text-white"}>
+              <Text className={active ? "font-medium text-ink" : "font-regular text-ink dark:text-white"}>
                 {o.label}
               </Text>
             </Pressable>
