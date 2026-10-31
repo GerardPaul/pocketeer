@@ -3,23 +3,27 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { BudgetRow } from "@/components/budget-row";
-import { Card, ErrorText, Muted } from "@/components/ui";
+import { Card, ErrorText, Heading, Icon, type IconName, Muted, useColors } from "@/components/ui";
 import { budgetFor, currentMonth, formatMonth, shiftMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
+import palette from "@/lib/palette";
 import { useData } from "@/lib/use-data";
 
-function MonthButton({ label, symbol, onPress }: { label: string; symbol: string; onPress: () => void }) {
+function MonthButton({ label, icon, onPress }: { label: string; icon: IconName; onPress: () => void }) {
+  const { text } = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      className="h-11 w-11 items-center justify-center rounded-full bg-neutral-200 active:opacity-70 dark:bg-neutral-700"
+      className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
     >
-      <Text className="text-xl text-neutral-900 dark:text-white">{symbol}</Text>
+      <Icon name={icon} color={text} />
     </Pressable>
   );
 }
+
+const TYPE_ICON = { expense: "expense", income: "income", transfer: "transfer" } as const;
 
 export default function History() {
   const { data, error } = useData();
@@ -32,15 +36,16 @@ export default function History() {
   const txs = data.transactions.filter((t) => t.date.startsWith(month));
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-3 p-4">
-      <View className="flex-row items-center justify-between">
-        <MonthButton label="Previous month" symbol="‹" onPress={() => setMonth(shiftMonth(month, -1))} />
-        <Text accessibilityRole="header" className="text-lg font-bold text-neutral-900 dark:text-white">
+    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
+      <View className="flex-row items-center justify-between rounded-full bg-surface p-1 dark:bg-surface-dark">
+        <MonthButton label="Previous month" icon="back" onPress={() => setMonth(shiftMonth(month, -1))} />
+        <Text accessibilityRole="header" className="font-semibold text-lg text-ink dark:text-white">
           {formatMonth(month)}
         </Text>
-        <MonthButton label="Next month" symbol="›" onPress={() => setMonth(shiftMonth(month, 1))} />
+        <MonthButton label="Next month" icon="forward" onPress={() => setMonth(shiftMonth(month, 1))} />
       </View>
 
+      <Heading>Budgets</Heading>
       {data.categories.map((c) => {
         const spent = spentFor(c.id, month, data.transactions);
         const budget = budgetFor(c.id, month, data.budgets);
@@ -53,38 +58,53 @@ export default function History() {
         );
       })}
 
-      <Text className="mt-2 text-lg font-bold text-neutral-900 dark:text-white">Transactions</Text>
-      {txs.length === 0 && <Muted>Nothing logged this month.</Muted>}
-      {txs.map((t) => {
-        const title =
-          t.type === "expense"
-            ? (categories.get(t.category_id ?? -1) ?? "Expense")
-            : t.type === "income"
-              ? "Income"
-              : "Transfer";
-        const account =
-          t.type === "transfer"
-            ? `${names.get(t.account_id)} → ${names.get(t.to_account_id ?? -1)}`
-            : names.get(t.account_id);
-        const sign = t.type === "expense" ? "−" : t.type === "income" ? "+" : "";
-        return (
-          <Card key={t.id} onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: t.id } })}>
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-semibold text-neutral-900 dark:text-white">{title}</Text>
-              <Text
-                className={`text-base font-semibold ${t.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-neutral-900 dark:text-white"}`}
-              >
+      <View className="mt-3 gap-1 rounded-3xl bg-primary p-4">
+        <Text accessibilityRole="header" className="px-1 pb-1 font-semibold text-lg text-white">
+          Transactions
+        </Text>
+        {txs.length === 0 && (
+          <Text className="px-1 pb-2 font-regular text-sm text-white/90">Nothing logged this month.</Text>
+        )}
+        {txs.map((t) => {
+          const title =
+            t.type === "expense"
+              ? (categories.get(t.category_id ?? -1) ?? "Expense")
+              : t.type === "income"
+                ? "Income"
+                : "Transfer";
+          const account =
+            t.type === "transfer"
+              ? `${names.get(t.account_id)} → ${names.get(t.to_account_id ?? -1)}`
+              : names.get(t.account_id);
+          const sign = t.type === "expense" ? "−" : t.type === "income" ? "+" : "";
+          return (
+            <Pressable
+              key={t.id}
+              accessibilityRole="button"
+              onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: t.id } })}
+              className="flex-row items-center gap-3 rounded-2xl p-2 active:bg-white/10"
+            >
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-white">
+                <Icon name={TYPE_ICON[t.type]} color={palette.primary} size={20} />
+              </View>
+              <View className="flex-1">
+                <Text numberOfLines={1} className="font-semibold text-base text-white">
+                  {title}
+                </Text>
+                <Text numberOfLines={1} className="font-regular text-sm text-white/90">
+                  {t.date} · {account}
+                  {t.note ? ` · ${t.note}` : ""}
+                </Text>
+              </View>
+              <Text className={`font-semibold text-base ${t.type === "income" ? "text-emerald-300" : "text-white"}`}>
                 {sign}
                 {formatMoney(t.amount, currency)}
               </Text>
-            </View>
-            <Muted>
-              {t.date} · {account}
-              {t.note ? ` · ${t.note}` : ""}
-            </Muted>
-          </Card>
-        );
-      })}
+            </Pressable>
+          );
+        })}
+      </View>
+      {data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
     </ScrollView>
   );
 }

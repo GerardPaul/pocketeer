@@ -105,7 +105,9 @@ Storage: `expo-sqlite` (local database on the device).
 | Navigation | Expo Router |
 | Database | `expo-sqlite` |
 | Styling | NativeWind 4.2.7 + Tailwind CSS 3 on plain React Native components; no UI kit |
-| Theme | Light and dark mode from day one, following the phone's setting |
+| Theme | Light and dark mode from day one, following the phone's setting. Palette in `src/lib/palette.js`: deep blue `#0F4C75` and teal `#0E7C86` main, coral `#FF7A59` accent (always with dark ink text, never white) |
+| Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
+| Icons | `expo-symbols` (SF Symbols on iOS, Material Symbols on Android/web); no icon library |
 | Currency formatting | `Intl.NumberFormat` (built in) |
 | Date picker | `@react-native-community/datetimepicker` |
 | Export | `expo-file-system` + `expo-sharing` |
@@ -146,9 +148,11 @@ None right now.
 - Transactions store a date only, no time.
 - App name is Pocketeer.
 - Downgraded from Expo SDK 58 to 57 so the App Store Expo Go can run it.
-- Web build is for local testing only (single-page output, light theme only, text date field, download instead of share sheet).
+- Web build is for local testing only (single-page output, text date field, download instead of share sheet).
 - Import validates the whole file (fields, references, balance rules) before replacing anything, and replaces in one database transaction.
-- Tabs are text-only for now (no icon library).
+- Visual design: rounded cards, colored hero and account cards, inspired by a finance app mockup. Restyle only, no charts.
+- Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
+- Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
 
 ## 9. Next steps
 

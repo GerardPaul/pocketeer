@@ -19,8 +19,8 @@ export function DateField({
 }) {
   const date = toDate(value);
   return (
-    <View className="gap-1">
-      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
+    <View className="gap-1.5">
+      <Text className="font-medium text-sm text-muted dark:text-muted-dark">{label}</Text>
       {Platform.OS === "ios" ? (
         <View className="items-start">
           <DateTimePicker
@@ -42,9 +42,9 @@ export function DateField({
               onChange: (e, d) => e.type === "set" && d && onChange(toDateString(d)),
             })
           }
-          className="rounded-xl border border-neutral-300 bg-white px-3 py-3 dark:border-neutral-600 dark:bg-neutral-800"
+          className="rounded-2xl border border-line bg-surface px-4 py-3.5 dark:border-line-dark dark:bg-surface-dark"
         >
-          <Text className="text-base text-neutral-900 dark:text-white">{value}</Text>
+          <Text className="font-regular text-base text-ink dark:text-white">{value}</Text>
         </Pressable>
       )}
     </View>

@@ -1,23 +1,69 @@
+import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
 import { type ReactNode, useState } from "react";
-import { Pressable, Text, TextInput, type TextInputProps, View } from "react-native";
+import { type ColorValue, Pressable, Text, TextInput, type TextInputProps, useColorScheme, View } from "react-native";
+
+import palette from "@/lib/palette";
+
+// SF Symbols on iOS, Material Symbols on Android and web.
+const ICONS = {
+  home: ["house.fill", "home"],
+  history: ["clock.fill", "history"],
+  wallet: ["wallet.bifold.fill", "account_balance_wallet"],
+  tag: ["tag.fill", "sell"],
+  settings: ["gearshape.fill", "settings"],
+  add: ["plus", "add"],
+  expense: ["arrow.up.right", "north_east"],
+  income: ["arrow.down.left", "south_west"],
+  transfer: ["arrow.left.arrow.right", "swap_horiz"],
+  back: ["chevron.left", "chevron_left"],
+  forward: ["chevron.right", "chevron_right"],
+  card: ["creditcard.fill", "credit_card"],
+  cash: ["banknote.fill", "payments"],
+  share: ["square.and.arrow.up", "ios_share"],
+  download: ["square.and.arrow.down", "download"],
+  lock: ["lock.fill", "lock"],
+} satisfies Record<string, [SFSymbol, AndroidSymbol]>;
+
+export type IconName = keyof typeof ICONS;
+
+// Icons are decorative; the text next to them carries the meaning.
+export function Icon({ name, color, size = 22 }: { name: IconName; color: ColorValue; size?: number }) {
+  const [ios, android] = ICONS[name];
+  return <SymbolView name={{ ios, android, web: android }} size={size} tintColor={color} aria-hidden />;
+}
+
+// Raw colors for things classes can't reach (icon tints).
+export function useColors() {
+  const dark = useColorScheme() === "dark";
+  return {
+    text: dark ? "#FFFFFF" : palette.ink,
+    muted: dark ? palette.mutedDark : palette.muted,
+    primary: dark ? palette.accent : palette.primary,
+    sea: palette.sea,
+  };
+}
 
 export function Button({
   title,
   onPress,
   variant = "primary",
   disabled = false,
+  icon,
 }: {
   title: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
+  icon?: IconName;
 }) {
+  const { text: textColor } = useColors();
   const colors = {
-    primary: "bg-emerald-600 active:bg-emerald-700",
-    secondary: "bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-700 dark:active:bg-neutral-600",
-    danger: "bg-red-600 active:bg-red-700",
+    primary: "bg-accent",
+    secondary: "border border-line bg-surface dark:border-line-dark dark:bg-surface-dark",
+    danger: "bg-red-600",
   }[variant];
-  const text = variant === "secondary" ? "text-neutral-900 dark:text-white" : "text-white";
+  const text = { primary: "text-ink", secondary: "text-ink dark:text-white", danger: "text-white" }[variant];
+  const iconColor = { primary: palette.ink, secondary: textColor, danger: "#FFFFFF" }[variant];
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,21 +71,26 @@ export function Button({
       aria-disabled={disabled}
       disabled={disabled}
       onPress={onPress}
-      className={`items-center rounded-xl px-4 py-3 ${colors} ${disabled ? "opacity-40" : ""}`}
+      className={`flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3.5 active:opacity-80 ${colors} ${disabled ? "opacity-40" : ""}`}
     >
-      <Text className={`text-base font-semibold ${text}`}>{title}</Text>
+      {icon && <Icon name={icon} color={iconColor} size={20} />}
+      <Text className={`font-semibold text-base ${text}`}>{title}</Text>
     </Pressable>
   );
 }
 
+function Label({ children }: { children: string }) {
+  return <Text className="font-medium text-sm text-muted dark:text-muted-dark">{children}</Text>;
+}
+
 export function Field({ label, ...props }: { label: string } & TextInputProps) {
   return (
-    <View className="gap-1">
-      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
+    <View className="gap-1.5">
+      <Label>{label}</Label>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor="#a3a3a3"
-        className="rounded-xl border border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
+        placeholderTextColor={palette.mutedDark}
+        className="rounded-2xl border border-line bg-surface px-4 py-3.5 font-regular text-base text-ink dark:border-line-dark dark:bg-surface-dark dark:text-white"
         {...props}
       />
     </View>
@@ -49,22 +100,30 @@ export function Field({ label, ...props }: { label: string } & TextInputProps) {
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;
   return (
-    <Text accessibilityRole="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
+    <Text accessibilityRole="alert" className="font-medium text-sm text-red-600 dark:text-red-400">
       {children}
     </Text>
   );
 }
 
 export function Muted({ children }: { children: ReactNode }) {
-  return <Text className="text-sm text-neutral-500 dark:text-neutral-400">{children}</Text>;
+  return <Text className="font-regular text-sm text-muted dark:text-muted-dark">{children}</Text>;
+}
+
+export function Heading({ children }: { children: string }) {
+  return (
+    <Text accessibilityRole="header" className="mt-3 font-semibold text-lg text-ink dark:text-white">
+      {children}
+    </Text>
+  );
 }
 
 // Full-screen message for screens that have nothing to show yet.
 export function EmptyState({ message, action }: { message: string; action?: { title: string; onPress: () => void } }) {
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-white p-6 dark:bg-neutral-900">
-      <Text className="text-center text-base text-neutral-500 dark:text-neutral-400">{message}</Text>
-      {action && <Button title={action.title} onPress={action.onPress} />}
+    <View className="flex-1 items-center justify-center gap-5 bg-canvas p-8 dark:bg-canvas-dark">
+      <Text className="text-center font-regular text-base text-muted dark:text-muted-dark">{message}</Text>
+      {action && <Button title={action.title} icon="add" onPress={action.onPress} />}
     </View>
   );
 }
@@ -94,9 +153,12 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <View className="gap-1">
-      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
-      <View accessibilityRole="radiogroup" className="flex-row gap-1 rounded-xl bg-neutral-200 p-1 dark:bg-neutral-800">
+    <View className="gap-1.5">
+      <Label>{label}</Label>
+      <View
+        accessibilityRole="radiogroup"
+        className="flex-row gap-1 rounded-2xl border border-line bg-surface p-1 dark:border-line-dark dark:bg-surface-dark"
+      >
         {options.map((o) => {
           const active = o.value === value;
           return (
@@ -106,9 +168,13 @@ export function Segmented<T extends string>({
               accessibilityLabel={o.label}
               aria-checked={active}
               onPress={() => onChange(o.value)}
-              className={`flex-1 items-center rounded-lg py-2 ${active ? "bg-white dark:bg-neutral-600" : ""}`}
+              className={`flex-1 items-center rounded-xl py-2.5 ${active ? "bg-primary" : ""}`}
             >
-              <Text className="font-medium text-neutral-900 dark:text-white">{o.label}</Text>
+              <Text
+                className={active ? "font-semibold text-white" : "font-medium text-muted dark:text-muted-dark"}
+              >
+                {o.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -130,8 +196,8 @@ export function Choice({
   onChange: (value: number) => void;
 }) {
   return (
-    <View className="gap-1">
-      <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-300">{label}</Text>
+    <View className="gap-1.5">
+      <Label>{label}</Label>
       <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-2">
         {options.map((o) => {
           const active = o.value === value;
@@ -142,9 +208,11 @@ export function Choice({
               accessibilityLabel={o.label}
               aria-checked={active}
               onPress={() => onChange(o.value)}
-              className={`rounded-full border px-4 py-2 ${active ? "border-emerald-600 bg-emerald-600" : "border-neutral-300 dark:border-neutral-600"}`}
+              className={`rounded-full border px-4 py-2 ${active ? "border-sea bg-sea" : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark"}`}
             >
-              <Text className={active ? "font-medium text-white" : "text-neutral-900 dark:text-white"}>{o.label}</Text>
+              <Text className={active ? "font-medium text-white" : "font-regular text-ink dark:text-white"}>
+                {o.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -159,9 +227,18 @@ export function Card({ children, onPress }: { children: ReactNode; onPress?: () 
       disabled={!onPress}
       onPress={onPress}
       accessibilityRole={onPress ? "button" : undefined}
-      className="gap-1 rounded-xl bg-neutral-100 p-4 active:opacity-70 dark:bg-neutral-800"
+      className="gap-1 rounded-3xl bg-surface p-4 active:opacity-70 dark:bg-surface-dark"
     >
       {children}
     </Pressable>
+  );
+}
+
+// Round tinted badge holding an icon, like the category tiles in the list rows.
+export function IconBadge({ name, color }: { name: IconName; color: string }) {
+  return (
+    <View className="h-11 w-11 items-center justify-center rounded-full bg-sea/10 dark:bg-white/10">
+      <Icon name={name} color={color} size={20} />
+    </View>
   );
 }

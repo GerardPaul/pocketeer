@@ -34,10 +34,15 @@ export default function Setup() {
   }
 
   return (
-    <View className="flex-1 gap-4 bg-white p-4 dark:bg-neutral-900">
-      <Stack.Screen options={{ title: "Welcome to Pocketeer" }} />
-      <Text className="text-xl font-bold text-neutral-900 dark:text-white">Pick your currency</Text>
-      <Muted>All amounts in the app use this currency. It can’t be changed later.</Muted>
+    <View className="flex-1 gap-4 bg-canvas p-4 dark:bg-canvas-dark">
+      <Stack.Screen options={{ title: "Welcome" }} />
+      <View className="gap-1 overflow-hidden rounded-3xl bg-primary p-6">
+        <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
+        <Text className="font-bold text-3xl text-white">Pocketeer</Text>
+        <Text className="pr-16 font-regular text-sm text-white/90">
+          Pick your currency. All amounts use it, and it can’t be changed later.
+        </Text>
+      </View>
       <Field label="Search" value={query} onChangeText={setQuery} placeholder="e.g. PHP or peso" autoCorrect={false} />
       <FlatList
         data={matches}
@@ -51,12 +56,14 @@ export default function Setup() {
               accessibilityLabel={`${item.code} ${item.name}`}
               aria-checked={active}
               onPress={() => setSelected(item.code)}
-              className={`flex-row items-center justify-between rounded-xl px-3 py-3 ${active ? "bg-emerald-100 dark:bg-emerald-900" : ""}`}
+              className={`mb-1 flex-row items-center justify-between rounded-2xl px-4 py-3 ${active ? "bg-sea" : "bg-surface dark:bg-surface-dark"}`}
             >
-              <Text className="text-base text-neutral-900 dark:text-white">
+              <Text className={`flex-shrink font-medium text-base ${active ? "text-white" : "text-ink dark:text-white"}`}>
                 {item.code} · {item.name}
               </Text>
-              <Muted>{formatMoney(123456, item.code)}</Muted>
+              <Text className={`font-regular text-sm ${active ? "text-white" : "text-muted dark:text-muted-dark"}`}>
+                {formatMoney(123456, item.code)}
+              </Text>
             </Pressable>
           );
         }}

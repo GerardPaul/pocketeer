@@ -61,7 +61,7 @@ function CategoryForm({
   }
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-4 p-4">
+    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-4 p-4 pb-8">
       <Stack.Screen options={{ title: existing ? "Edit category" : "New category" }} />
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Food" />
       <Field

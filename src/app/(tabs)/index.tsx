@@ -1,19 +1,16 @@
 import { router } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { AccountSummary } from "@/components/account-summary";
+import { AccountCard } from "@/components/account-card";
 import { BudgetRow } from "@/components/budget-row";
-import { Button, Card, ErrorText, Muted } from "@/components/ui";
+import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
-function Heading({ children }: { children: string }) {
-  return <Text className="mt-2 text-lg font-bold text-neutral-900 dark:text-white">{children}</Text>;
-}
-
 export default function Home() {
   const { data, error } = useData();
+  const colors = useColors();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
   const month = currentMonth();
@@ -26,33 +23,58 @@ export default function Home() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-3 p-4">
-      <Button
-        title="Log transaction"
-        onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: "new" } })}
-      />
-
-      <Card>
-        <View className="flex-row justify-between">
-          <Muted>Money you have</Muted>
-          <Text className="font-semibold text-neutral-900 dark:text-white">{formatMoney(cash, currency)}</Text>
+    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
+      <View className="gap-4 overflow-hidden rounded-3xl bg-primary p-6">
+        <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
+        <View className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sea/60" />
+        <View>
+          <Text className="font-regular text-sm text-white/90">Money you have</Text>
+          <Text className="font-bold text-4xl text-white">{formatMoney(cash, currency)}</Text>
         </View>
-        <View className="flex-row justify-between">
-          <Muted>Credit card debt</Muted>
-          <Text className="font-semibold text-neutral-900 dark:text-white">{formatMoney(owed, currency)}</Text>
+        <View className="flex-row items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
+          <Text className="font-regular text-sm text-white/90">Credit card debt</Text>
+          <Text className="font-semibold text-base text-white">{formatMoney(owed, currency)}</Text>
         </View>
-      </Card>
+        <Button
+          title="Log transaction"
+          icon="add"
+          onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: "new" } })}
+        />
+      </View>
 
-      <Heading>Accounts</Heading>
-      {data.accounts.length === 0 && <Muted>No accounts yet. Add one in the Accounts tab.</Muted>}
-      {data.accounts.map((a) => (
-        <Card key={a.id}>
-          <AccountSummary account={a} transactions={data.transactions} currency={currency} />
-        </Card>
-      ))}
+      <Heading>My accounts</Heading>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add account"
+          onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })}
+          className="w-16 items-center justify-center rounded-3xl bg-sea/10 active:opacity-70 dark:bg-white/10"
+        >
+          <Icon name="add" color={colors.sea} size={28} />
+        </Pressable>
+        {data.accounts.length === 0 && (
+          <View className="w-64 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">
+            <Muted>No accounts yet. Add your cash, bank or credit card.</Muted>
+          </View>
+        )}
+        {data.accounts.map((a) => (
+          <View key={a.id} className="w-64">
+            <AccountCard
+              account={a}
+              transactions={data.transactions}
+              currency={currency}
+              onPress={() => router.push({ pathname: "/account/[id]", params: { id: a.id } })}
+            />
+          </View>
+        ))}
+      </ScrollView>
 
       <Heading>{`Budgets · ${formatMonth(month)}`}</Heading>
-      {data.categories.length === 0 && <Muted>No categories yet. Add one in the Categories tab.</Muted>}
+      {data.categories.length === 0 && (
+        <Card onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}>
+          <Muted>No categories yet. Tap to add one, like Food or Transport.</Muted>
+        </Card>
+      )}
       {data.categories.map((c) => (
         <Card key={c.id}>
           <BudgetRow

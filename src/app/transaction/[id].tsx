@@ -105,7 +105,7 @@ function TransactionForm({
   }
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-4 p-4">
+    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-4 p-4 pb-8">
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
       <Field label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0" />

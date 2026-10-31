@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { Button, Card, ErrorText, Muted } from "@/components/ui";
+import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import { replaceAllData } from "@/db/db";
 import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
 import { pickBackupFile, shareBackupFile } from "@/lib/backup-file";
@@ -13,6 +13,7 @@ export default function Settings() {
   const [message, setMessage] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, setPending] = useState<Backup | null>(null);
+  const { muted } = useColors();
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const { currency, accounts, categories, budgets, transactions } = data;
@@ -59,22 +60,25 @@ export default function Settings() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-3 p-4">
+    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
       <Card>
-        <View className="flex-row justify-between">
+        <View className="flex-row items-center justify-between">
           <Muted>Currency</Muted>
-          <Text className="font-semibold text-neutral-900 dark:text-white">{currency}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Icon name="lock" color={muted} size={16} />
+            <Text className="font-semibold text-base text-ink dark:text-white">{currency}</Text>
+          </View>
         </View>
         <Muted>Set at first launch and can’t be changed.</Muted>
       </Card>
 
-      <Text className="mt-2 text-lg font-bold text-neutral-900 dark:text-white">Backup</Text>
+      <Heading>Backup</Heading>
       <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>
-      <Button title="Export data" onPress={exportData} />
+      <Button title="Export data" icon="share" onPress={exportData} />
 
       {pending ? (
-        <View className="gap-2 rounded-xl border-2 border-red-500 p-4">
-          <Text className="text-base font-bold text-red-600 dark:text-red-400">This will replace ALL your data</Text>
+        <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
+          <Text className="font-bold text-base text-red-600 dark:text-red-400">This will replace ALL your data</Text>
           <Muted>
             Everything currently in the app ({accounts.length} accounts, {transactions.length} transactions) will be
             deleted and replaced with the file’s {pending.accounts.length} accounts and {pending.transactions.length}{" "}
@@ -84,11 +88,11 @@ export default function Settings() {
           <Button title="Cancel" variant="secondary" onPress={() => setPending(null)} />
         </View>
       ) : (
-        <Button title="Import data" variant="secondary" onPress={chooseFile} />
+        <Button title="Import data" icon="download" variant="secondary" onPress={chooseFile} />
       )}
 
       <ErrorText>{problem}</ErrorText>
-      {message && <Text className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{message}</Text>}
+      {message && <Text className="font-medium text-sm text-emerald-700 dark:text-emerald-400">{message}</Text>}
     </ScrollView>
   );
 }
