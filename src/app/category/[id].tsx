@@ -4,7 +4,7 @@ import { ScrollView } from "react-native";
 
 import { Button, DeleteButton, ErrorText, Field, Muted } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/db/db";
-import { type Category, budgetFor, toDateString } from "@/lib/ledger";
+import { type Category, budgetFor, currentMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
@@ -28,7 +28,7 @@ function CategoryForm({
   data: NonNullable<ReturnType<typeof useData>["data"]>;
   currency: string;
 }) {
-  const month = toDateString(new Date()).slice(0, 7);
+  const month = currentMonth();
   const current = existing ? budgetFor(existing.id, month, data.budgets) : null;
   const [name, setName] = useState(existing?.name ?? "");
   const [budget, setBudget] = useState(current === null ? "" : toInputString(current, currency));

@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { ScrollView, Text, View } from "react-native";
 
 import { Button, Card, ErrorText, Muted } from "@/components/ui";
-import { budgetFor, toDateString } from "@/lib/ledger";
+import { budgetFor, currentMonth } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
@@ -10,7 +10,7 @@ export default function Categories() {
   const { data, error } = useData();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
-  const month = toDateString(new Date()).slice(0, 7);
+  const month = currentMonth();
 
   return (
     <ScrollView className="flex-1 bg-white dark:bg-neutral-900" contentContainerClassName="gap-3 p-4">

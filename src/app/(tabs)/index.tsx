@@ -4,7 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 import { AccountSummary } from "@/components/account-summary";
 import { BudgetRow } from "@/components/budget-row";
 import { Button, Card, ErrorText, Muted } from "@/components/ui";
-import { accountAmount, budgetFor, spentFor, toDateString } from "@/lib/ledger";
+import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
@@ -16,8 +16,7 @@ export default function Home() {
   const { data, error } = useData();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
-  const month = toDateString(new Date()).slice(0, 7);
-  const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date());
+  const month = currentMonth();
 
   let cash = 0;
   let owed = 0;
@@ -52,7 +51,7 @@ export default function Home() {
         </Card>
       ))}
 
-      <Heading>{`Budgets · ${monthLabel}`}</Heading>
+      <Heading>{`Budgets · ${formatMonth(month)}`}</Heading>
       {data.categories.length === 0 && <Muted>No categories yet. Add one in the Categories tab.</Muted>}
       {data.categories.map((c) => (
         <Card key={c.id}>
