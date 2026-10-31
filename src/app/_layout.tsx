@@ -86,6 +86,7 @@ function AppStack() {
     <ThemeProvider value={scheme === "dark" ? dark : light}>
       <Stack screenOptions={{ headerShadowVisible: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
         {/* Default titles cover loading and empty states; the forms set a more specific one. */}
         <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
         <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />

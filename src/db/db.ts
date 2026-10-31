@@ -163,7 +163,7 @@ const DELETE_ALL = `
   DELETE FROM settings WHERE key <> 'theme';
 `;
 
-// Removes everything, currency included, so the app starts over at setup.
+// Removes everything, currency included, so the app starts over at the welcome screen.
 export async function clearAllData(db: SQLiteDatabase) {
   await db.withTransactionAsync(() => db.execAsync(DELETE_ALL));
 }

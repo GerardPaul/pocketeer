@@ -65,6 +65,7 @@ Examples:
 
 ## 3. MVP features
 
+0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below.
 1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed).
 2. **Categories** — create, edit, delete (only if no transactions); set monthly budget.
 3. **Log expense** — amount, account, category, date, note.
@@ -74,7 +75,7 @@ Examples:
 7. **Transaction list** — view, edit, delete past entries.
 8. **History** — browse previous months (category spent vs. budget per month).
 9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
-   - Clear all data deletes everything (currency included, so setup runs again) after an explicit warning and confirmation.
+   - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
 
 ## 4. Data model
@@ -156,6 +157,8 @@ None right now.
 - Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import.
 - Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
+- Welcome screen shows only until a currency is picked, not on every launch.
+- Currency symbols are stored in the currency list instead of read from `Intl`, because narrow symbols differ between Hermes and browsers.
 
 ## 9. Next steps
 

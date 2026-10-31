@@ -78,7 +78,7 @@ export default function Settings() {
     try {
       await clearAllData(db);
       setConfirmingClear(false);
-      router.replace("/setup");
+      router.replace("/welcome");
     } catch (e) {
       setProblem(`Clearing failed, nothing was changed: ${String(e)}`);
     }

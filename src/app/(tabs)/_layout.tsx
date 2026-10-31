@@ -13,7 +13,7 @@ function tabIcon(name: IconName) {
 export default function TabsLayout() {
   const { data } = useData();
   const colors = useColors();
-  if (data && !data.currency) return <Redirect href="/setup" />;
+  if (data && !data.currency) return <Redirect href="/welcome" />;
   return (
     <Tabs
       screenOptions={{
