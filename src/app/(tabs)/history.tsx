@@ -9,14 +9,26 @@ import { formatMoney } from "@/lib/money";
 import palette from "@/lib/palette";
 import { useData } from "@/lib/use-data";
 
-function MonthButton({ label, icon, onPress }: { label: string; icon: IconName; onPress: () => void }) {
+function MonthButton({
+  label,
+  icon,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   const { text } = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      aria-disabled={disabled}
+      disabled={disabled}
       onPress={onPress}
-      className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
+      className={`h-11 w-11 items-center justify-center rounded-full active:opacity-60 ${disabled ? "opacity-30" : ""}`}
     >
       <Icon name={icon} color={text} />
     </Pressable>
@@ -42,7 +54,13 @@ export default function History() {
         <Text accessibilityRole="header" className="font-semibold text-lg text-ink dark:text-white">
           {formatMonth(month)}
         </Text>
-        <MonthButton label="Next month" icon="forward" onPress={() => setMonth(shiftMonth(month, 1))} />
+        {/* Nothing can be logged in the future, so history stops at this month. */}
+        <MonthButton
+          label="Next month"
+          icon="forward"
+          disabled={month >= currentMonth()}
+          onPress={() => setMonth(shiftMonth(month, 1))}
+        />
       </View>
 
       <Heading>Budgets</Heading>

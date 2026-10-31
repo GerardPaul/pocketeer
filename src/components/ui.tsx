@@ -3,6 +3,7 @@ import { useColorScheme } from "nativewind";
 import { type ReactNode, useState } from "react";
 import { type ColorValue, Pressable, Text, TextInput, type TextInputProps, View } from "react-native";
 
+import { cleanAmountInput, cleanTextInput } from "@/lib/input";
 import palette from "@/lib/palette";
 
 // SF Symbols on iOS, Material Symbols on Android and web.
@@ -86,15 +87,26 @@ function Label({ children }: { children: string }) {
   return <Text className="font-medium text-sm text-muted dark:text-muted-dark">{children}</Text>;
 }
 
-export function Field({ label, ...props }: { label: string } & TextInputProps) {
+// Every field filters what's typed: `amount` fields take digits and one separator, others drop control characters.
+export function Field({
+  label,
+  amount = false,
+  onChangeText,
+  ...props
+}: { label: string; amount?: boolean } & TextInputProps) {
   return (
     <View className="gap-1.5">
       <Label>{label}</Label>
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor={palette.mutedDark}
+        maxLength={amount ? 16 : 100}
+        keyboardType={amount ? "decimal-pad" : undefined}
+        inputMode={amount ? "decimal" : undefined}
+        placeholder={amount ? "0" : undefined}
         className="rounded-2xl border border-line bg-surface px-4 py-3.5 font-regular text-base text-ink dark:border-line-dark dark:bg-surface-dark dark:text-white"
         {...props}
+        onChangeText={(t) => onChangeText?.(amount ? cleanAmountInput(t) : cleanTextInput(t))}
       />
     </View>
   );

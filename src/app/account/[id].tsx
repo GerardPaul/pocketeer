@@ -36,21 +36,24 @@ function AccountForm({
 }) {
   const [name, setName] = useState(existing?.name ?? "");
   const [type, setType] = useState<AccountType>(existing?.type ?? "regular");
-  const [starting, setStarting] = useState(existing ? toInputString(existing.starting_amount, currency) : "0");
+  const [starting, setStarting] = useState(existing ? toInputString(existing.starting_amount, currency) : "");
   const [limit, setLimit] = useState(
     existing?.credit_limit != null ? toInputString(existing.credit_limit, currency) : "",
   );
   const [error, setError] = useState<string | null>(null);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/accounts"));
+  // Blank starting amount means 0, so only the name and (for cards) the limit are required.
+  const startingAmount = parseAmount(starting.trim() || "0", currency);
+  const creditLimit = type === "credit_card" ? parseAmount(limit, currency) : null;
+  const canSave =
+    name.trim() !== "" && startingAmount !== null && (type !== "credit_card" || (creditLimit ?? 0) > 0);
   const used = existing
     ? data.transactions.some((t) => t.account_id === existing.id || t.to_account_id === existing.id)
     : false;
 
   async function save() {
-    const startingAmount = parseAmount(starting, currency);
     if (startingAmount === null) return setError("Enter a valid starting amount.");
-    const creditLimit = type === "credit_card" ? parseAmount(limit, currency) : null;
     if (type === "credit_card" && creditLimit === null) return setError("Enter a valid credit limit.");
 
     const account: Account = {
@@ -94,13 +97,13 @@ function AccountForm({
         label={type === "regular" ? "Starting balance" : "Amount owed now"}
         value={starting}
         onChangeText={setStarting}
-        keyboardType="decimal-pad"
+        amount
       />
       {type === "credit_card" && (
-        <Field label="Credit limit" value={limit} onChangeText={setLimit} keyboardType="decimal-pad" />
+        <Field label="Credit limit" value={limit} onChangeText={setLimit} amount />
       )}
       <ErrorText>{error}</ErrorText>
-      <Button title="Save" onPress={save} />
+      <Button title="Save" onPress={save} disabled={!canSave} />
       {existing && (used ? <Muted>Accounts with transactions can’t be deleted.</Muted> : <DeleteButton onConfirm={remove} />)}
     </ScrollView>
   );

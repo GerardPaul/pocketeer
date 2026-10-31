@@ -11,6 +11,7 @@ import {
   type TransactionType,
   deleteTransactionProblem,
   toDateString,
+  transactionShapeProblem,
   validateTransaction,
 } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
@@ -67,21 +68,28 @@ function TransactionForm({
 
   const close = () => (router.canGoBack() ? router.back() : router.replace(HOME));
   const accountOptions = data.accounts.map((a) => ({ value: a.id, label: a.name }));
+  const today = toDateString(new Date());
+
+  const minor = parseAmount(amount, currency);
+  const tx: NewTransaction | null =
+    minor === null || accountId === null
+      ? null
+      : {
+          id: existing?.id,
+          type,
+          amount: minor,
+          date,
+          note: note.trim(),
+          account_id: accountId,
+          to_account_id: type === "transfer" ? toAccountId : null,
+          category_id: type === "expense" ? categoryId : null,
+        };
+  // Balance rules are checked on save, where the error can say which account is the problem.
+  const canSave = tx !== null && transactionShapeProblem(tx, data.accounts) === null && date <= today;
 
   async function save() {
-    const minor = parseAmount(amount, currency);
-    if (minor === null) return setError("Enter a valid amount.");
-    if (accountId === null) return setError("Pick an account.");
-    const tx: NewTransaction = {
-      id: existing?.id,
-      type,
-      amount: minor,
-      date,
-      note,
-      account_id: accountId,
-      to_account_id: type === "transfer" ? toAccountId : null,
-      category_id: type === "expense" ? categoryId : null,
-    };
+    if (!tx) return setError("Enter a valid amount.");
+    if (date > today) return setError("The date can't be in the future.");
     const problem = validateTransaction(tx, data.accounts, data.transactions);
     if (problem) return setError(problem);
     try {
@@ -108,7 +116,7 @@ function TransactionForm({
     <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-4 p-4 pb-8">
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
-      <Field label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0" />
+      <Field label="Amount" value={amount} onChangeText={setAmount} amount />
       <Choice
         label={type === "transfer" ? "From account" : "Account"}
         options={accountOptions}
@@ -136,10 +144,10 @@ function TransactionForm({
             onChange={setCategoryId}
           />
         ))}
-      <DateField label="Date" value={date} onChange={setDate} />
-      <Field label="Note (optional)" value={note} onChangeText={setNote} />
+      <DateField label="Date" value={date} onChange={setDate} max={today} />
+      <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
       <ErrorText>{error}</ErrorText>
-      <Button title="Save" onPress={save} />
+      <Button title="Save" onPress={save} disabled={!canSave} />
       {existing && <DeleteButton onConfirm={remove} />}
     </ScrollView>
   );

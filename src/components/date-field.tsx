@@ -12,12 +12,15 @@ export function DateField({
   label,
   value,
   onChange,
+  max,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  max?: string; // latest allowed date, YYYY-MM-DD
 }) {
   const date = toDate(value);
+  const maximumDate = max ? toDate(max) : undefined;
   return (
     <View className="gap-1.5">
       <Text className="font-medium text-sm text-muted dark:text-muted-dark">{label}</Text>
@@ -28,6 +31,7 @@ export function DateField({
             value={date}
             mode="date"
             display="compact"
+            maximumDate={maximumDate}
             onChange={(_, d) => d && onChange(toDateString(d))}
           />
         </View>
@@ -39,6 +43,7 @@ export function DateField({
             DateTimePickerAndroid.open({
               value: date,
               mode: "date",
+              maximumDate,
               onChange: (e, d) => e.type === "set" && d && onChange(toDateString(d)),
             })
           }

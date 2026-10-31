@@ -68,7 +68,7 @@ function ledgerProblem(
 // Field rules for one transaction, without looking at balances.
 export function transactionShapeProblem(tx: NewTransaction, accounts: readonly Account[]): string | null {
   if (!Number.isSafeInteger(tx.amount) || tx.amount <= 0) return "Enter an amount above 0.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(tx.date)) return "Pick a date.";
+  if (!isRealDate(tx.date)) return "Pick a date.";
   if (!accounts.some((a) => a.id === tx.account_id)) return "Pick an account.";
   if (tx.type === "expense" && tx.category_id === null) return "Pick a category.";
   if (tx.type !== "expense" && tx.category_id !== null) return "Only expenses have a category.";
@@ -161,6 +161,13 @@ function pad(n: number): string {
 
 export function toDateString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// YYYY-MM-DD that exists on the calendar (rejects 2026-02-30, which Date would roll into March).
+export function isRealDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split("-").map(Number);
+  return toDateString(new Date(y, m - 1, d)) === s;
 }
 
 export function currentMonth(): string {

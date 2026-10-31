@@ -73,7 +73,7 @@ Examples:
 5. **Transfer** — move money between two accounts.
 6. **Dashboard** — each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month.
 7. **Transaction list** — view, edit, delete past entries.
-8. **History** — browse previous months (category spent vs. budget per month).
+8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months.
 9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
@@ -156,6 +156,9 @@ None right now.
 - Clear all data also resets the currency, so the user can start over with a different one. The theme is kept.
 - Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import.
 - Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
+- Forms: amount fields start empty with a "0" placeholder; Save stays disabled until required fields are valid (a blank starting balance counts as 0). Balance rules are still checked on save so the error can name the account.
+- Input filtering: amount fields accept digits and one decimal separator only; text fields drop control characters and are length-capped; all database queries use bound parameters.
+- Transaction dates can't be in the future (date picker capped at today; the form blocks later dates). Import doesn't apply this rule, so an older backup with future dates still loads.
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
 - Welcome screen shows only until a currency is picked, not on every launch.
 - Currency symbols are stored in the currency list instead of read from `Intl`, because narrow symbols differ between Hermes and browsers.

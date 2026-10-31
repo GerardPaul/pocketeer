@@ -4,6 +4,7 @@ import {
   accountAmount,
   budgetFor,
   deleteTransactionProblem,
+  isRealDate,
   shiftMonth,
   spentFor,
   validateAccount,
@@ -125,4 +126,13 @@ test("spent counts only that category's expenses in that month", () => {
 test("shiftMonth crosses year boundaries", () => {
   expect(shiftMonth("2026-12", 1)).toBe("2027-01");
   expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+});
+
+test("only real calendar dates pass", () => {
+  expect(isRealDate("2026-02-28")).toBe(true);
+  expect(isRealDate("2028-02-29")).toBe(true);
+  expect(isRealDate("2026-02-30")).toBe(false);
+  expect(isRealDate("2026-13-01")).toBe(false);
+  expect(isRealDate("2026-1-01")).toBe(false);
+  expect(isRealDate("2026-01-01'; DROP TABLE transactions;--")).toBe(false);
 });

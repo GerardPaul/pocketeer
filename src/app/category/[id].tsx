@@ -35,11 +35,12 @@ function CategoryForm({
   const [error, setError] = useState<string | null>(null);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/categories"));
+  const amount = parseAmount(budget, currency);
+  const canSave = name.trim() !== "" && amount !== null;
   const used = existing ? data.transactions.some((t) => t.category_id === existing.id) : false;
 
   async function save() {
     if (!name.trim()) return setError("Enter a name.");
-    const amount = parseAmount(budget, currency);
     if (amount === null) return setError("Enter a valid monthly budget.");
     try {
       await saveCategory(db, { id: existing?.id, name }, amount, month);
@@ -68,12 +69,11 @@ function CategoryForm({
         label="Monthly budget"
         value={budget}
         onChangeText={setBudget}
-        keyboardType="decimal-pad"
-        placeholder="0"
+        amount
       />
       <Muted>Resets every month. Changes apply from this month on; past months keep their budget.</Muted>
       <ErrorText>{error}</ErrorText>
-      <Button title="Save" onPress={save} />
+      <Button title="Save" onPress={save} disabled={!canSave} />
       {existing &&
         (used ? <Muted>Categories with transactions can’t be deleted.</Muted> : <DeleteButton onConfirm={remove} />)}
     </ScrollView>
