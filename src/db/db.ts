@@ -91,6 +91,33 @@ export async function deleteAccount(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM accounts WHERE id = ?", id);
 }
 
+// The budget applies from `month` on; earlier months keep whatever budget they had.
+export async function saveCategory(
+  db: SQLiteDatabase,
+  c: { id?: number; name: string },
+  budget: number,
+  month: string,
+) {
+  await db.withTransactionAsync(async () => {
+    let id = c.id;
+    if (id === undefined) {
+      id = (await db.runAsync("INSERT INTO categories (name) VALUES (?)", c.name.trim())).lastInsertRowId;
+    } else {
+      await db.runAsync("UPDATE categories SET name = ? WHERE id = ?", c.name.trim(), id);
+    }
+    await db.runAsync(
+      `INSERT INTO category_budgets (category_id, month, amount) VALUES (?, ?, ?)
+       ON CONFLICT (category_id, month) DO UPDATE SET amount = excluded.amount`,
+      id, month, budget,
+    );
+  });
+}
+
+// Budgets cascade; the transactions foreign key makes SQLite reject this if the category is in use.
+export async function deleteCategory(db: SQLiteDatabase, id: number) {
+  await db.runAsync("DELETE FROM categories WHERE id = ?", id);
+}
+
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
   const [setting, accounts, categories, budgets, transactions] = await Promise.all([

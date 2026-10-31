@@ -10,6 +10,7 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ tabBarIconStyle: { display: "none" }, tabBarLabelStyle: { fontSize: 14 } }}>
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="accounts" options={{ title: "Accounts" }} />
+      <Tabs.Screen name="categories" options={{ title: "Categories" }} />
     </Tabs>
   );
 }
