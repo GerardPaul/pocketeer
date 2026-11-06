@@ -11,9 +11,9 @@ import {
   validateTransaction,
 } from "./ledger";
 
-const cash: Account = { id: 1, name: "Cash", type: "regular", starting_amount: 1000, credit_limit: null };
-const bank: Account = { id: 2, name: "Bank", type: "regular", starting_amount: 5000, credit_limit: null };
-const visa: Account = { id: 3, name: "Visa", type: "credit_card", starting_amount: 0, credit_limit: 3000 };
+const cash: Account = { id: 1, name: "Cash", type: "regular", starting_amount: 1000, credit_limit: null, cutoff_day: null, due_day: null };
+const bank: Account = { id: 2, name: "Bank", type: "regular", starting_amount: 5000, credit_limit: null, cutoff_day: null, due_day: null };
+const visa: Account = { id: 3, name: "Visa", type: "credit_card", starting_amount: 0, credit_limit: 3000, cutoff_day: 5, due_day: 25 };
 const accounts = [cash, bank, visa];
 
 let nextId = 1;
@@ -98,6 +98,13 @@ test("account edits: can't flip type once used, can't break balance rules", () =
   expect(validateAccount({ ...cash, name: " " }, cash, [])).toMatch(/name/);
   expect(validateAccount({ ...visa, credit_limit: null }, visa, [])).toMatch(/credit limit/);
   expect(validateAccount({ ...cash, starting_amount: 800 }, cash, [spend])).toBeNull();
+});
+
+test("credit card cutoff and due days are optional days of the month", () => {
+  expect(validateAccount({ ...visa, cutoff_day: null, due_day: null }, visa, [])).toBeNull();
+  expect(validateAccount({ ...visa, cutoff_day: 31, due_day: 1 }, visa, [])).toBeNull();
+  expect(validateAccount({ ...visa, cutoff_day: 0 }, visa, [])).toMatch(/Cutoff/);
+  expect(validateAccount({ ...visa, due_day: 32 }, visa, [])).toMatch(/Due/);
 });
 
 test("budget in effect is the latest one at or before the month", () => {

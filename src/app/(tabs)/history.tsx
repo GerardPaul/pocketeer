@@ -1,12 +1,10 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
-import { ErrorText, Heading, Icon, type IconName, Muted, useColors } from "@/components/ui";
-import { budgetFor, currentMonth, formatMonth, shiftMonth, spentFor } from "@/lib/ledger";
-import { formatMoney } from "@/lib/money";
-import palette from "@/lib/palette";
+import { TransactionList } from "@/components/transaction-list";
+import { ErrorText, Heading, Icon, type IconName, Muted, Segmented, Select, TextButton, useColors } from "@/components/ui";
+import { type TransactionType, budgetFor, currentMonth, formatMonth, shiftMonth, spentFor } from "@/lib/ledger";
 import { useData } from "@/lib/use-data";
 
 function MonthButton({
@@ -35,19 +33,48 @@ function MonthButton({
   );
 }
 
-const TYPE_ICON = { expense: "expense", income: "income", transfer: "transfer" } as const;
-// Circle color tells the type apart at a glance; ink icons stay readable on all three.
-const TYPE_CIRCLE = { expense: "bg-red-300", income: "bg-accent", transfer: "bg-white" } as const;
+const TYPES = [
+  { value: "all", label: "All" },
+  { value: "expense", label: "Expense" },
+  { value: "income", label: "Income" },
+  { value: "transfer", label: "Transfer" },
+] as const;
+
+// 0 means "all" in the account and budget filters; real ids start at 1.
+const ALL = 0;
 
 export default function History() {
   const { data, error } = useData();
+  const { tint } = useColors();
   const [month, setMonth] = useState(currentMonth);
+  const [showFilters, setShowFilters] = useState(false);
+  const [type, setType] = useState<TransactionType | "all">("all");
+  const [accountId, setAccountId] = useState(ALL);
+  const [categoryId, setCategoryId] = useState(ALL);
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
 
-  const names = new Map(data.accounts.map((a) => [a.id, a.name]));
-  const categories = new Map(data.categories.map((c) => [c.id, c]));
-  const txs = data.transactions.filter((t) => t.date.startsWith(month));
+  // Only expenses have a budget, so the budget filter applies to all types or expenses alone.
+  const budgetFilter = type === "all" || type === "expense";
+  const activeFilters = Number(type !== "all") + Number(accountId !== ALL) + Number(categoryId !== ALL);
+  const changeType = (t: TransactionType | "all") => {
+    setType(t);
+    if (t === "income" || t === "transfer") setCategoryId(ALL);
+  };
+  const clearFilters = () => {
+    setType("all");
+    setAccountId(ALL);
+    setCategoryId(ALL);
+  };
+
+  const txs = data.transactions.filter(
+    (t) =>
+      t.date.startsWith(month) &&
+      (type === "all" || t.type === type) &&
+      (accountId === ALL || t.account_id === accountId || t.to_account_id === accountId) &&
+      (categoryId === ALL || t.category_id === categoryId),
+  );
+  const categories = categoryId === ALL ? data.categories : data.categories.filter((c) => c.id === categoryId);
 
   return (
     <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
@@ -65,68 +92,80 @@ export default function History() {
         />
       </View>
 
-      <Heading>Budgets</Heading>
-      <BudgetGrid>
-        {data.categories.map((c) => {
-          const spent = spentFor(c.id, month, data.transactions);
-          const budget = budgetFor(c.id, month, data.budgets);
-          // Skip categories that didn't exist yet and weren't used that month.
-          if (budget === null && spent === 0) return null;
-          return <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={spent} budget={budget} currency={currency} />;
-        })}
-      </BudgetGrid>
-
-      <View className="mt-3 gap-1 rounded-3xl bg-primary p-4">
-        <Text accessibilityRole="header" className="px-1 pb-1 font-semibold text-lg text-white">
-          Transactions
-        </Text>
-        {txs.length === 0 && (
-          <Text className="px-1 pb-2 font-regular text-sm text-white">Nothing logged this month.</Text>
-        )}
-        {txs.map((t) => {
-          const title =
-            t.type === "expense"
-              ? (categories.get(t.category_id ?? -1)?.name ?? "Expense")
-              : t.type === "income"
-                ? "Income"
-                : "Transfer";
-          const account =
-            t.type === "transfer"
-              ? `${names.get(t.account_id)} → ${names.get(t.to_account_id ?? -1)}`
-              : names.get(t.account_id);
-          const sign = t.type === "expense" ? "−" : t.type === "income" ? "+" : "";
-          return (
-            <Pressable
-              key={t.id}
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: t.id } })}
-              className="flex-row items-center gap-3 rounded-2xl p-2 active:bg-white/10"
-            >
-              <View className={`h-11 w-11 items-center justify-center rounded-full ${TYPE_CIRCLE[t.type]}`}>
-                <Icon
-                  name={(t.type === "expense" && categories.get(t.category_id ?? -1)?.icon) || TYPE_ICON[t.type]}
-                  color={palette.ink}
-                  size={20}
-                />
-              </View>
-              <View className="flex-1">
-                <Text numberOfLines={1} className="font-semibold text-base text-white">
-                  {title}
-                </Text>
-                <Text numberOfLines={1} className="font-regular text-sm text-white">
-                  {t.date} · {account}
-                  {t.note ? ` · ${t.note}` : ""}
-                </Text>
-              </View>
-              <Text className="font-semibold text-base text-white">
-                {sign}
-                {formatMoney(t.amount, currency)}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View className="flex-row items-center justify-between">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Filters${activeFilters ? `, ${activeFilters} on` : ""}`}
+          aria-expanded={showFilters}
+          onPress={() => setShowFilters(!showFilters)}
+          className="min-h-11 flex-row items-center gap-2 rounded-full bg-surface px-4 active:opacity-70 dark:bg-surface-dark"
+        >
+          <Icon name="filter" color={tint} size={20} />
+          <Text className="font-medium text-sm text-ink dark:text-white">
+            {activeFilters ? `Filters (${activeFilters})` : "Filters"}
+          </Text>
+          <Icon name={showFilters ? "up" : "down"} color={tint} size={16} />
+        </Pressable>
+        {activeFilters > 0 && <TextButton title="Clear filters" onPress={clearFilters} />}
       </View>
-      {data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
+      {showFilters && (
+        <View className="gap-4 rounded-3xl bg-surface p-4 dark:bg-surface-dark">
+          <Segmented label="Type" options={TYPES} value={type} onChange={changeType} />
+          <Select
+            label="Account"
+            options={[
+              { value: ALL, label: "All accounts" },
+              ...data.accounts.map((a) => ({
+                value: a.id,
+                label: a.name,
+                icon: a.type === "credit_card" ? ("card" as const) : ("cash" as const),
+              })),
+            ]}
+            value={accountId}
+            onChange={setAccountId}
+          />
+          {budgetFilter && (
+            <Select
+              label="Budget"
+              options={[
+                { value: ALL, label: "All budgets" },
+                ...data.categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon })),
+              ]}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+          )}
+        </View>
+      )}
+
+      {budgetFilter && (
+        <>
+          <Heading>Budgets</Heading>
+          <BudgetGrid>
+            {categories.map((c) => {
+              const spent = spentFor(c.id, month, data.transactions);
+              const budget = budgetFor(c.id, month, data.budgets);
+              // Skip categories that didn't exist yet and weren't used that month.
+              if (budget === null && spent === 0) return null;
+              return (
+                <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={spent} budget={budget} currency={currency} />
+              );
+            })}
+          </BudgetGrid>
+          {data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
+        </>
+      )}
+
+      <View className="mt-3">
+        <TransactionList
+          title="Transactions"
+          transactions={txs}
+          data={data}
+          currency={currency}
+          accountId={accountId === ALL ? undefined : accountId}
+          empty={activeFilters ? "Nothing matches these filters this month." : "Nothing logged this month."}
+        />
+      </View>
     </ScrollView>
   );
 }

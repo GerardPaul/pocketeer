@@ -18,7 +18,8 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import type { CategoryIcon } from "@/lib/category-icons";
-import { cleanAmountInput, cleanTextInput } from "@/lib/input";
+import { cleanTextInput } from "@/lib/input";
+import { formatAmountInput } from "@/lib/money";
 import palette from "@/lib/palette";
 
 // SF Symbols on iOS, Material Symbols on Android and web.
@@ -73,6 +74,10 @@ const ICONS = {
   close: ["xmark", "close"],
   search: ["magnifyingglass", "search"],
   check: ["checkmark.circle.fill", "check_circle"],
+  up: ["chevron.up", "expand_less"],
+  filter: ["line.3.horizontal.decrease.circle", "filter_list"],
+  edit: ["pencil", "edit"],
+  list: ["list.bullet", "receipt_long"],
 } satisfies Record<string, [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;
@@ -131,30 +136,49 @@ export function Button({
   );
 }
 
+// Low-key text button for secondary moves like Back and Skip, where a full button would compete with the main action.
+export function TextButton({ title, icon, onPress }: { title: string; icon?: IconName; onPress: () => void }) {
+  const { muted } = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      hitSlop={8}
+      className="min-h-11 flex-row items-center gap-1 rounded-full px-2 active:opacity-60"
+    >
+      {icon && <Icon name={icon} color={muted} size={18} />}
+      <Text className="font-medium text-sm text-muted dark:text-muted-dark">{title}</Text>
+    </Pressable>
+  );
+}
+
 function Label({ children }: { children: string }) {
   return <Text className="font-medium text-sm text-muted dark:text-muted-dark">{children}</Text>;
 }
 
-// Every field filters what's typed: `amount` fields take digits and one separator, others drop control characters.
+// Every field filters what's typed. Passing `currency` makes it an amount field: digits and one decimal mark,
+// grouped as typed ("1,234.50"). Other fields drop control characters.
 export function Field({
   label,
-  amount = false,
+  currency,
   onChangeText,
   ...props
-}: { label: string; amount?: boolean } & TextInputProps) {
+}: { label: string; currency?: string } & TextInputProps) {
+  const amount = currency !== undefined;
   return (
     <View className="gap-1.5">
       <Label>{label}</Label>
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor={palette.mutedDark}
-        maxLength={amount ? 16 : 100}
+        maxLength={amount ? 20 : 100}
         keyboardType={amount ? "decimal-pad" : undefined}
         inputMode={amount ? "decimal" : undefined}
         placeholder={amount ? "0" : undefined}
         className="rounded-2xl border border-line bg-surface px-4 py-3.5 font-regular text-base text-ink dark:border-line-dark dark:bg-surface-dark dark:text-white"
         {...props}
-        onChangeText={(t) => onChangeText?.(amount ? cleanAmountInput(t) : cleanTextInput(t))}
+        onChangeText={(t) => onChangeText?.(amount ? formatAmountInput(t, currency) : cleanTextInput(t))}
       />
     </View>
   );

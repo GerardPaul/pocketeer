@@ -89,8 +89,11 @@ function AppStack() {
         <Stack screenOptions={{ headerShadowVisible: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
           <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
+          <Stack.Screen name="setup" options={{ headerShown: false, title: "Currency" }} />
+          <Stack.Screen name="tutorial" options={{ headerShown: false, title: "Tutorial", gestureEnabled: false }} />
           {/* Default titles cover loading and empty states; the forms set a more specific one. */}
           <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
+          <Stack.Screen name="account/transactions/[id]" options={{ title: "Transactions" }} />
           <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
           <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
         </Stack>

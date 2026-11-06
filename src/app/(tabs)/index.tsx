@@ -3,14 +3,28 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
-import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
+import { Button, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
+// Square "+" tile that leads a row of cards, used for adding accounts and the first category.
+function AddTile({ label, onPress }: { label: string; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      className="w-16 items-center justify-center rounded-3xl bg-sea/10 active:opacity-70 dark:bg-white/10"
+    >
+      <Icon name="add" color={colors.tint} size={28} />
+    </Pressable>
+  );
+}
+
 export default function Home() {
   const { data, error } = useData();
-  const colors = useColors();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
   const month = currentMonth();
@@ -28,7 +42,7 @@ export default function Home() {
         <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
         <View className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sea/60" />
         <View>
-          <Text className="font-regular text-sm text-white">Money you have</Text>
+          <Text className="font-regular text-sm text-white">In your pocket</Text>
           <Text className="font-bold text-4xl text-white">{formatMoney(cash, currency)}</Text>
         </View>
         <View className="flex-row items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
@@ -44,14 +58,7 @@ export default function Home() {
 
       <Heading>My accounts</Heading>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add account"
-          onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })}
-          className="w-16 items-center justify-center rounded-3xl bg-sea/10 active:opacity-70 dark:bg-white/10"
-        >
-          <Icon name="add" color={colors.tint} size={28} />
-        </Pressable>
+        <AddTile label="Add account" onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })} />
         {data.accounts.length === 0 && (
           <View className="w-64 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">
             <Muted>No accounts yet. Add your cash, bank or credit card.</Muted>
@@ -70,10 +77,17 @@ export default function Home() {
       </ScrollView>
 
       <Heading>{`Budgets · ${formatMonth(month)}`}</Heading>
+      {/* Only for the first category; after that, categories are managed from their tab. */}
       {data.categories.length === 0 && (
-        <Card onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}>
-          <Muted>No categories yet. Tap to add one, like Food or Transport.</Muted>
-        </Card>
+        <View className="flex-row gap-3">
+          <AddTile
+            label="Add category"
+            onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}
+          />
+          <View className="flex-1 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">
+            <Muted>No budgets yet. Tap + to add a category, like Food or Transport, and give it a monthly budget.</Muted>
+          </View>
+        </View>
       )}
       <BudgetGrid>
         {data.categories.map((c) => (

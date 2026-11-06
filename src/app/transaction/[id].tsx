@@ -137,7 +137,7 @@ function TransactionForm({
     <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
-      <Field label="Amount" value={amount} onChangeText={setAmount} amount />
+      <Field label="Amount" value={amount} onChangeText={setAmount} currency={currency} />
       <Select
         label={type === "transfer" ? "From account" : "Account"}
         options={accountOptions}

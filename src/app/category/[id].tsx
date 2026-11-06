@@ -75,7 +75,7 @@ function CategoryForm({
         label="Monthly budget"
         value={budget}
         onChangeText={setBudget}
-        amount
+        currency={currency}
       />
       <Muted>Resets every month. Changes apply from this month on; past months keep their budget.</Muted>
       <ErrorText>{error}</ErrorText>

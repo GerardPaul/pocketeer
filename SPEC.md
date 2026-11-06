@@ -2,7 +2,7 @@
 
 Living document. Update it whenever a decision changes.
 
-Last updated: 2026-10-31
+Last updated: 2026-11-06
 
 ## 1. Overview
 
@@ -33,7 +33,7 @@ Where money lives or is owed. Every account has a name and a **type**:
 
 - Regular: has a starting balance.
   Balance = starting balance + income + transfers in − expenses − transfers out.
-- Credit card: has a credit limit and a starting amount owed.
+- Credit card: has a credit limit and a starting amount owed, plus an optional cutoff day and due day (day of the month, 1–31), shown on the card.
   Owed = starting owed + expenses + transfers out − payments (transfers in) − refunds (income).
   Available credit = limit − owed.
 - Any transaction that would break the rule above is rejected with a clear message.
@@ -65,15 +65,16 @@ Examples:
 
 ## 3. MVP features
 
-0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below.
-1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed).
+0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below, and a small "Back" link returns to the welcome screen.
+   After the currency is picked, a five-step tutorial (accounts, budgets, logging, history, backups) runs once, with Back, Skip and Next.
+1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed, optional cutoff and due days). In the Accounts tab, tapping an account offers "View transactions" or "Edit account". An account's transactions screen lists everything it was used for, newest first, ten at a time with a "Load more" button, and can be limited to a date range.
 2. **Categories** — create, edit, delete (only if no transactions); set monthly budget; pick an icon (shown in the Categories tab, budget rows, expense rows in history and the category picker).
 3. **Log expense** — amount, account, category, date, note.
 4. **Log income** — amount, account, date, note (e.g. salary).
 5. **Transfer** — move money between two accounts.
-6. **Dashboard** — each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month.
+6. **Dashboard** — total money held ("In your pocket"); each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month. With no categories yet, a "+" tile like the one for accounts adds the first one.
 7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account.
-8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months.
+8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, budget) narrow the month's transactions and can be combined; the budget filter only applies to all types or expenses, and income or transfer filters hide the budgets.
 9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
@@ -92,7 +93,7 @@ Storage: `expo-sqlite` (local database on the device).
 
 | Table | Fields |
 |---|---|
-| `accounts` | id, name, type (`regular` / `credit_card`), starting_amount, credit_limit (cards only) |
+| `accounts` | id, name, type (`regular` / `credit_card`), starting_amount, credit_limit (cards only), cutoff_day and due_day (cards only, optional, 1–31; added in database version 3) |
 | `categories` | id, name, icon (added in database version 2; defaults to `tag`) |
 | `category_budgets` | category_id, month (`YYYY-MM`), amount — the budget in effect from that month on; latest row at or before a month wins |
 | `transactions` | id, type (`expense` / `income` / `transfer`), amount, date, note, account_id, to_account_id (transfers only), category_id (expenses only) |
@@ -129,7 +130,7 @@ Add later only if needed:
 - Bank account linking
 - Multiple currencies
 - Multiple users / login
-- Credit card statement cycles, due dates, interest and minimum payments
+- Credit card statement calculations, due date reminders, interest and minimum payments (cutoff and due days are stored and shown only)
 
 ## 7. Open questions
 
@@ -166,6 +167,9 @@ None right now.
 - Each Poppins weight is its own font family, so `font-medium`/`font-semibold`/`font-bold` pick the family; Tailwind's fontWeight utilities are disabled.
 - Welcome screen shows only until a currency is picked, not on every launch.
 - Currency symbols are stored in the currency list instead of read from `Intl`, because narrow symbols differ between Hermes and browsers.
+- Amount fields group digits as they're typed ("1,234.50"), using the phone's locale marks and grouping, the same ones `formatMoney` shows; decimals are capped at the currency's places (none for JPY). Since "," is the grouping mark in most English locales, it's no longer accepted as a decimal point there.
+- Cutoff and due days are optional, so cards added before database version 3 keep working. Backups without them import with none; the backup format stays version 1.
+- The tutorial shows once, right after the currency is picked; it isn't stored, so closing the app mid-tutorial skips the rest.
 
 ## 9. Next steps
 
@@ -177,4 +181,4 @@ None right now.
    - Environment checked: Node 22.23.3, npm 10.9.9, git 2.46
 6. ~~Project setup~~ — git repo (remote: github.com/GerardPaul/pocketeer), Expo app, libraries, NativeWind + dark mode
 7. ~~MVP build~~ — on branch `feature/mvp`, one commit per step: database + money logic, currency setup, accounts, categories, transactions, dashboard, history, export/import
-8. Test on both phones in Expo Go, then merge `feature/mvp`
+8. Test on both phones in Expo Go

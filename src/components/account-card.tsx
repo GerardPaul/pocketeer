@@ -44,6 +44,16 @@ export function AccountCard({
             Available {formatMoney((account.credit_limit ?? 0) - amount, currency)}
           </Text>
         )}
+        {card && (account.cutoff_day !== null || account.due_day !== null) && (
+          <Text className={`font-regular text-xs ${text}`}>
+            {[
+              account.cutoff_day !== null && `Cutoff: day ${account.cutoff_day}`,
+              account.due_day !== null && `Due: day ${account.due_day}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+        )}
       </View>
     </Pressable>
   );

@@ -4,6 +4,7 @@ import {
   type Category,
   type CategoryBudget,
   type Transaction,
+  isDay,
   transactionShapeProblem,
   validateAccount,
 } from "@/lib/ledger";
@@ -56,16 +57,22 @@ export function parseBackup(text: string): Result {
       typeof a.name !== "string" ||
       (a.type !== "regular" && a.type !== "credit_card") ||
       !isAmount(a.starting_amount) ||
-      !(a.credit_limit === null || isId(a.credit_limit))
+      !(a.credit_limit === null || isId(a.credit_limit)) ||
+      // Older backups have no cutoff or due day.
+      !isDay((a.cutoff_day ?? null) as number | null) ||
+      !isDay((a.due_day ?? null) as number | null)
     ) {
       return fail("Backup has an invalid account.");
     }
+    const card = a.type === "credit_card";
     accounts.push({
       id: a.id,
       name: a.name,
       type: a.type,
       starting_amount: a.starting_amount,
-      credit_limit: a.type === "credit_card" ? a.credit_limit : null,
+      credit_limit: card ? a.credit_limit : null,
+      cutoff_day: card ? ((a.cutoff_day ?? null) as number | null) : null,
+      due_day: card ? ((a.due_day ?? null) as number | null) : null,
     });
   }
 

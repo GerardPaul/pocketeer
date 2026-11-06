@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useToast } from "@/components/toast";
 import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, Muted, Segmented } from "@/components/ui";
 import { deleteAccount, saveAccount } from "@/db/db";
-import { type Account, type AccountType, validateAccount } from "@/lib/ledger";
+import { cleanDayInput } from "@/lib/input";
+import { type Account, type AccountType, isDay, validateAccount } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
@@ -40,15 +41,23 @@ function AccountForm({
   const [limit, setLimit] = useState(
     existing?.credit_limit != null ? toInputString(existing.credit_limit, currency) : "",
   );
+  const [cutoff, setCutoff] = useState(existing?.cutoff_day?.toString() ?? "");
+  const [due, setDue] = useState(existing?.due_day?.toString() ?? "");
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/accounts"));
   // Blank starting amount means 0, so only the name and (for cards) the limit are required.
   const startingAmount = parseAmount(starting.trim() || "0", currency);
-  const creditLimit = type === "credit_card" ? parseAmount(limit, currency) : null;
+  const card = type === "credit_card";
+  const creditLimit = card ? parseAmount(limit, currency) : null;
+  // Blank days are allowed; the filter already keeps them to digits.
+  const cutoffDay = card && cutoff ? Number(cutoff) : null;
+  const dueDay = card && due ? Number(due) : null;
   const canSave =
-    name.trim() !== "" && startingAmount !== null && (type !== "credit_card" || (creditLimit ?? 0) > 0);
+    name.trim() !== "" &&
+    startingAmount !== null &&
+    (!card || ((creditLimit ?? 0) > 0 && isDay(cutoffDay) && isDay(dueDay)));
   const used = existing
     ? data.transactions.some((t) => t.account_id === existing.id || t.to_account_id === existing.id)
     : false;
@@ -63,6 +72,8 @@ function AccountForm({
       type,
       starting_amount: startingAmount,
       credit_limit: creditLimit,
+      cutoff_day: cutoffDay,
+      due_day: dueDay,
     };
     const problem = validateAccount(account, existing, data.transactions);
     if (problem) return setError(problem);
@@ -100,10 +111,31 @@ function AccountForm({
         label={type === "regular" ? "Starting balance" : "Amount owed now"}
         value={starting}
         onChangeText={setStarting}
-        amount
+        currency={currency}
       />
-      {type === "credit_card" && (
-        <Field label="Credit limit" value={limit} onChangeText={setLimit} amount />
+      {card && (
+        <>
+          <Field label="Credit limit" value={limit} onChangeText={setLimit} currency={currency} />
+          <Field
+            label="Cutoff date (day of the month, optional)"
+            value={cutoff}
+            onChangeText={(t) => setCutoff(cleanDayInput(t))}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={2}
+            placeholder="e.g. 5"
+          />
+          <Field
+            label="Due date (day of the month, optional)"
+            value={due}
+            onChangeText={(t) => setDue(cleanDayInput(t))}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={2}
+            placeholder="e.g. 25"
+          />
+          {(!isDay(cutoffDay) || !isDay(dueDay)) && <ErrorText>Use a day from 1 to 31.</ErrorText>}
+        </>
       )}
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />

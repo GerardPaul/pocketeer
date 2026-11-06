@@ -3,8 +3,8 @@ import { type Backup, parseBackup, toBackupJson } from "./backup";
 const sample: Backup = {
   currency: "PHP",
   accounts: [
-    { id: 1, name: "Cash", type: "regular", starting_amount: 100000, credit_limit: null },
-    { id: 2, name: "Visa", type: "credit_card", starting_amount: 0, credit_limit: 300000 },
+    { id: 1, name: "Cash", type: "regular", starting_amount: 100000, credit_limit: null, cutoff_day: null, due_day: null },
+    { id: 2, name: "Visa", type: "credit_card", starting_amount: 0, credit_limit: 300000, cutoff_day: 5, due_day: 25 },
   ],
   categories: [{ id: 1, name: "Food", icon: "food" }],
   budgets: [{ category_id: 1, month: "2026-10", amount: 800000 }],
@@ -29,6 +29,15 @@ test("category icons are optional and unknown ones fall back to the default", ()
   expect(parse(b)).toMatchObject({ ok: true, backup: { categories: [{ icon: "tag" }] } });
   b.categories[0].icon = "<script>";
   expect(parse(b)).toMatchObject({ ok: true, backup: { categories: [{ icon: "tag" }] } });
+});
+
+test("cutoff and due days are optional, but must be days of the month", () => {
+  const b = json();
+  delete b.accounts[1].cutoff_day;
+  delete b.accounts[1].due_day;
+  expect(parse(b)).toMatchObject({ ok: true, backup: { accounts: [{}, { cutoff_day: null, due_day: null }] } });
+  b.accounts[1].due_day = 40;
+  expect(parse(b)).toMatchObject({ ok: false, error: /invalid account/ });
 });
 
 test("rejects files that aren't Pocketeer backups", () => {

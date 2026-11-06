@@ -10,6 +10,9 @@ export type Account = {
   // Regular: starting balance. Credit card: starting amount owed.
   starting_amount: number;
   credit_limit: number | null;
+  // Credit cards only, both optional: day of the month (1–31) the statement closes and payment is due.
+  cutoff_day: number | null;
+  due_day: number | null;
 };
 
 export type Category = { id: number; name: string; icon: CategoryIcon };
@@ -128,6 +131,8 @@ export function validateAccount(
     if (account.credit_limit === null || !Number.isSafeInteger(account.credit_limit) || account.credit_limit <= 0) {
       return "Enter a credit limit above 0.";
     }
+    if (!isDay(account.cutoff_day)) return "Cutoff date must be a day from 1 to 31.";
+    if (!isDay(account.due_day)) return "Due date must be a day from 1 to 31.";
   }
   const used = txs.some((t) => t.account_id === account.id || t.to_account_id === account.id);
   // Flipping type would turn "money held" into "money owed" for every past transaction.
@@ -135,6 +140,10 @@ export function validateAccount(
     return "Can't change the type of an account that has transactions.";
   }
   return accountProblem(account, accountAmount(account, txs));
+}
+
+export function isDay(day: number | null): boolean {
+  return day === null || (Number.isInteger(day) && day >= 1 && day <= 31);
 }
 
 export function budgetFor(

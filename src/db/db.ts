@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { type CategoryIcon, toCategoryIcon } from "@/lib/category-icons";
 import type { Account, Category, CategoryBudget, NewTransaction, Transaction } from "@/lib/ledger";
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -55,6 +55,12 @@ export async function migrate(db: SQLiteDatabase) {
   if (version < 2) {
     await db.execAsync("ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT 'tag';");
   }
+  if (version < 3) {
+    await db.execAsync(`
+      ALTER TABLE accounts ADD COLUMN cutoff_day INTEGER CHECK (cutoff_day BETWEEN 1 AND 31);
+      ALTER TABLE accounts ADD COLUMN due_day INTEGER CHECK (due_day BETWEEN 1 AND 31);
+    `);
+  }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
@@ -76,16 +82,22 @@ export async function setCurrency(db: SQLiteDatabase, code: string) {
 }
 
 export async function saveAccount(db: SQLiteDatabase, a: Omit<Account, "id"> & { id?: number }) {
-  const limit = a.type === "credit_card" ? a.credit_limit : null;
+  const card = a.type === "credit_card";
+  const values = [
+    a.name.trim(), a.type, a.starting_amount,
+    card ? a.credit_limit : null, card ? a.cutoff_day : null, card ? a.due_day : null,
+  ] as const;
   if (a.id === undefined) {
     await db.runAsync(
-      "INSERT INTO accounts (name, type, starting_amount, credit_limit) VALUES (?, ?, ?, ?)",
-      a.name.trim(), a.type, a.starting_amount, limit,
+      `INSERT INTO accounts (name, type, starting_amount, credit_limit, cutoff_day, due_day)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      ...values,
     );
   } else {
     await db.runAsync(
-      "UPDATE accounts SET name = ?, type = ?, starting_amount = ?, credit_limit = ? WHERE id = ?",
-      a.name.trim(), a.type, a.starting_amount, limit, a.id,
+      `UPDATE accounts SET name = ?, type = ?, starting_amount = ?, credit_limit = ?, cutoff_day = ?, due_day = ?
+       WHERE id = ?`,
+      ...values, a.id,
     );
   }
 }
@@ -180,8 +192,9 @@ export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "curre
     await db.runAsync("INSERT INTO settings (key, value) VALUES ('currency', ?)", data.currency);
     for (const a of data.accounts) {
       await db.runAsync(
-        "INSERT INTO accounts (id, name, type, starting_amount, credit_limit) VALUES (?, ?, ?, ?, ?)",
-        a.id, a.name, a.type, a.starting_amount, a.credit_limit,
+        `INSERT INTO accounts (id, name, type, starting_amount, credit_limit, cutoff_day, due_day)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        a.id, a.name, a.type, a.starting_amount, a.credit_limit, a.cutoff_day, a.due_day,
       );
     }
     for (const c of data.categories) {
