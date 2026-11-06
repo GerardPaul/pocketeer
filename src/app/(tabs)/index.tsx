@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
-import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
+import { AddCategoryTile, BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { Button, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
@@ -100,6 +100,12 @@ export default function Home() {
             currency={currency}
           />
         ))}
+        {data.categories.length > 0 && (
+          <AddCategoryTile
+            key="add"
+            onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}
+          />
+        )}
       </BudgetGrid>
     </ScrollView>
   );

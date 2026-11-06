@@ -25,7 +25,7 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: "history",
     title: "Look back anytime",
-    body: "History shows past months. Filter by budget, account or type to see where money went.",
+    body: "History shows past months. Filter by category, account or type to see where money went.",
   },
   {
     icon: "lock",

@@ -72,9 +72,9 @@ Examples:
 3. **Log expense** — amount, account, category, date, note.
 4. **Log income** — amount, account, date, note (e.g. salary).
 5. **Transfer** — move money between two accounts.
-6. **Dashboard** — total money held ("In your pocket"); each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month. With no categories yet, a "+" tile like the one for accounts adds the first one.
+6. **Dashboard** — total money held ("In your pocket"); each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month. With no categories yet, a "+" tile like the one for accounts adds the first one; after that, an "Add category" tile ends the budgets grid.
 7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account.
-8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, budget) narrow the month's transactions and can be combined; the budget filter only applies to all types or expenses, and income or transfer filters hide the budgets.
+8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, category) narrow the month's transactions and can be combined; the category filter only applies to all types or expenses, and income or transfer filters hide the budgets.
 9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
@@ -169,6 +169,7 @@ None right now.
 - Currency symbols are stored in the currency list instead of read from `Intl`, because narrow symbols differ between Hermes and browsers.
 - Amount fields group digits as they're typed ("1,234.50"), using the phone's locale marks and grouping, the same ones `formatMoney` shows; decimals are capped at the currency's places (none for JPY). Since "," is the grouping mark in most English locales, it's no longer accepted as a decimal point there.
 - Cutoff and due days are optional, so cards added before database version 3 keep working. Backups without them import with none; the backup format stays version 1.
+- Naming: "category" is the thing you create, pick and filter by; "budget" is only its monthly amount (the "Budgets" heading, "Monthly budget" field, money left). A category can exist without a budget, and its budget changes by month, so they aren't the same word.
 - The tutorial shows once, right after the currency is picked; it isn't stored, so closing the app mid-tutorial skips the rest.
 
 ## 9. Next steps

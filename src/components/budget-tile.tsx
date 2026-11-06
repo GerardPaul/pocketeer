@@ -1,6 +1,6 @@
 import { useColorScheme } from "nativewind";
 import { Children, isValidElement, type ReactNode } from "react";
-import { type ColorValue, Text, View } from "react-native";
+import { type ColorValue, Pressable, Text, View } from "react-native";
 
 import { Icon, type IconName, Muted, useColors } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
@@ -113,6 +113,24 @@ export function BudgetTile({
         )}
       </View>
     </View>
+  );
+}
+
+// Last tile in the grid, so a category can be added without leaving Home. Same ring size as the others.
+export function AddCategoryTile({ onPress }: { onPress: () => void }) {
+  const { tint } = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add category"
+      onPress={onPress}
+      className="items-center gap-2 active:opacity-70"
+    >
+      <View style={{ width: SIZE, height: SIZE }} className="items-center justify-center rounded-full bg-sea/10 dark:bg-white/10">
+        <Icon name="add" color={tint} size={28} />
+      </View>
+      <Text className="font-semibold text-base text-ink dark:text-white">Add category</Text>
+    </Pressable>
   );
 }
 

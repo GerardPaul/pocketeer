@@ -40,7 +40,7 @@ const TYPES = [
   { value: "transfer", label: "Transfer" },
 ] as const;
 
-// 0 means "all" in the account and budget filters; real ids start at 1.
+// 0 means "all" in the account and category filters; real ids start at 1.
 const ALL = 0;
 
 export default function History() {
@@ -54,7 +54,7 @@ export default function History() {
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
 
-  // Only expenses have a budget, so the budget filter applies to all types or expenses alone.
+  // Only expenses have a category, so the category filter applies to all types or expenses alone.
   const budgetFilter = type === "all" || type === "expense";
   const activeFilters = Number(type !== "all") + Number(accountId !== ALL) + Number(categoryId !== ALL);
   const changeType = (t: TransactionType | "all") => {
@@ -126,9 +126,9 @@ export default function History() {
           />
           {budgetFilter && (
             <Select
-              label="Budget"
+              label="Category"
               options={[
-                { value: ALL, label: "All budgets" },
+                { value: ALL, label: "All categories" },
                 ...data.categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon })),
               ]}
               value={categoryId}
