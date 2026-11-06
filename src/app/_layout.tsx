@@ -93,7 +93,7 @@ function AppStack() {
           <Stack.Screen name="tutorial" options={{ headerShown: false, title: "Tutorial", gestureEnabled: false }} />
           {/* Default titles cover loading and empty states; the forms set a more specific one. */}
           <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
-          <Stack.Screen name="account/transactions/[id]" options={{ title: "Transactions" }} />
+          <Stack.Screen name="account/transactions/[id]" options={{ headerShown: false, title: "Transactions" }} />
           <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
           <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
         </Stack>
