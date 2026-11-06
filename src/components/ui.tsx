@@ -401,11 +401,13 @@ export function Select({
 export function IconPicker<T extends IconName>({
   label,
   icons,
+  names,
   value,
   onChange,
 }: {
   label: string;
   icons: readonly T[];
+  names: Record<T, string>;
   value: T;
   onChange: (icon: T) => void;
 }) {
@@ -420,7 +422,7 @@ export function IconPicker<T extends IconName>({
             <Pressable
               key={name}
               accessibilityRole="radio"
-              accessibilityLabel={name}
+              accessibilityLabel={names[name]}
               aria-checked={active}
               onPress={() => onChange(name)}
               className={`h-12 w-12 items-center justify-center rounded-2xl border ${active ? "border-sea bg-sea" : "border-line bg-surface dark:border-line-dark dark:bg-surface-dark"}`}

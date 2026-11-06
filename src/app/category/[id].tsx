@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useToast } from "@/components/toast";
 import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, IconPicker, Muted } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/db/db";
-import { CATEGORY_ICONS, type CategoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/category-icons";
+import { CATEGORY_ICON_NAMES, CATEGORY_ICONS, type CategoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/category-icons";
 import { type Category, budgetFor, currentMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
 import { useData } from "@/lib/use-data";
@@ -37,6 +37,12 @@ function CategoryForm({
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
+  // New categories take the icon's suggested name, unless the user has typed their own.
+  // Editing never renames, since the name already shows on past transactions.
+  const pickIcon = (next: CategoryIcon) => {
+    if (!existing && (name.trim() === "" || name === CATEGORY_ICON_NAMES[icon])) setName(CATEGORY_ICON_NAMES[next]);
+    setIcon(next);
+  };
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/categories"));
   const amount = parseAmount(budget, currency);
   const canSave = name.trim() !== "" && amount !== null;
@@ -69,8 +75,8 @@ function CategoryForm({
   return (
     <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit category" : "New category" }} />
+      <IconPicker label="Icon" icons={CATEGORY_ICONS} names={CATEGORY_ICON_NAMES} value={icon} onChange={pickIcon} />
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Food" />
-      <IconPicker label="Icon" icons={CATEGORY_ICONS} value={icon} onChange={setIcon} />
       <Field
         label="Monthly budget"
         value={budget}
