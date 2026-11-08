@@ -7,7 +7,7 @@ import { ScrollView, Text, View } from "react-native";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
-import { clearAllData, replaceAllData, saveTheme, type Theme } from "@/db/db";
+import { clearAllData, replaceAllData, saveLastBackup, saveTheme, type Theme } from "@/db/db";
 import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
 import { pickBackupFile, shareBackupFile } from "@/lib/backup-file";
 import { toDateString } from "@/lib/ledger";
@@ -25,7 +25,7 @@ export default function Settings() {
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { currency, accounts, categories, budgets, transactions } = data;
+  const { currency, lastBackup, accounts, categories, budgets, transactions } = data;
 
   async function changeTheme(theme: Theme) {
     colorScheme.set(theme);
@@ -44,6 +44,9 @@ export default function Settings() {
         `pocketeer-backup-${toDateString(now)}.json`,
         toBackupJson({ currency, accounts, categories, budgets, transactions }, now),
       );
+      // ponytail: the share sheet doesn't say whether the file was actually saved, so any completed export counts.
+      await saveLastBackup(db, toDateString(now));
+      reload();
       toast("Backup created");
     } catch (e) {
       setProblem(`Export failed: ${String(e)}`);
@@ -67,6 +70,8 @@ export default function Settings() {
     if (!pending) return;
     try {
       await replaceAllData(db, pending);
+      // The imported data came from a backup file, so it's already backed up.
+      await saveLastBackup(db, toDateString(new Date()));
       setPending(null);
       toast("Import complete, your data was replaced");
       reload();
@@ -112,6 +117,7 @@ export default function Settings() {
 
       <Heading>Backup</Heading>
       <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>
+      <Muted>{lastBackup ? `Last backup: ${lastBackup}` : "No backup yet on this phone."}</Muted>
       <Button title="Export data" icon="share" onPress={exportData} />
 
       {pending ? (

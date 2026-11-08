@@ -2,11 +2,14 @@ import {
   type Account,
   type Transaction,
   accountAmount,
+  backupDueDays,
   budgetFor,
+  daysBetween,
   deleteTransactionProblem,
   isRealDate,
   shiftMonth,
   spentFor,
+  summarize,
   validateAccount,
   validateTransaction,
 } from "./ledger";
@@ -142,4 +145,47 @@ test("only real calendar dates pass", () => {
   expect(isRealDate("2026-13-01")).toBe(false);
   expect(isRealDate("2026-1-01")).toBe(false);
   expect(isRealDate("2026-01-01'; DROP TABLE transactions;--")).toBe(false);
+});
+
+describe("summarize", () => {
+  it("adds income and expenses and leaves transfers out", () => {
+    const txs = [
+      tx({ type: "income", amount: 5000, account_id: 1 }),
+      tx({ type: "expense", amount: 1200, account_id: 1, category_id: 1 }),
+      tx({ type: "expense", amount: 300, account_id: 3, category_id: 1 }),
+      tx({ type: "transfer", amount: 900, account_id: 1, to_account_id: 3 }),
+    ];
+    expect(summarize(txs)).toEqual({ income: 5000, spent: 1500, net: 3500 });
+  });
+
+  it("goes negative when spending is more than income", () => {
+    expect(summarize([tx({ type: "expense", amount: 700, account_id: 1, category_id: 1 })]).net).toBe(-700);
+  });
+});
+
+describe("backupDueDays", () => {
+  const on = (date: string) => tx({ type: "expense", amount: 100, account_id: 1, category_id: 1, date });
+
+  it("counts whole days across months and leap years", () => {
+    expect(daysBetween("2028-02-28", "2028-03-01")).toBe(2);
+    expect(daysBetween("2026-11-08", "2026-11-08")).toBe(0);
+  });
+
+  it("isn't due with no transactions or within 30 days", () => {
+    expect(backupDueDays(null, [], "2026-11-08")).toBeNull();
+    expect(backupDueDays(null, [on("2026-10-10")], "2026-11-08")).toBeNull();
+    expect(backupDueDays("2026-10-10", [on("2026-01-01")], "2026-11-08")).toBeNull();
+  });
+
+  it("counts from the oldest transaction when there's no backup", () => {
+    expect(backupDueDays(null, [on("2026-11-01"), on("2026-10-01")], "2026-11-08")).toBe(38);
+  });
+
+  it("counts from the last backup", () => {
+    expect(backupDueDays("2026-09-01", [on("2026-01-01")], "2026-11-08")).toBe(68);
+  });
+
+  it("ignores a backup older than all the data", () => {
+    expect(backupDueDays("2025-01-01", [on("2026-10-20")], "2026-11-08")).toBeNull();
+  });
 });

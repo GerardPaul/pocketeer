@@ -4,7 +4,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { TransactionList } from "@/components/transaction-list";
 import { ErrorText, Heading, Icon, type IconName, Muted, Segmented, Select, TextButton, useColors } from "@/components/ui";
-import { type TransactionType, budgetFor, currentMonth, formatMonth, shiftMonth, spentFor } from "@/lib/ledger";
+import { type TransactionType, budgetFor, currentMonth, formatMonth, shiftMonth, spentFor, summarize } from "@/lib/ledger";
+import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
 function MonthButton({
@@ -30,6 +31,17 @@ function MonthButton({
     >
       <Icon name={icon} color={text} />
     </Pressable>
+  );
+}
+
+function Total({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-1 gap-0.5">
+      <Text className="font-regular text-xs text-muted dark:text-muted-dark">{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit className="font-semibold text-base text-ink dark:text-white">
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -74,6 +86,8 @@ export default function History() {
       (accountId === ALL || t.account_id === accountId || t.to_account_id === accountId) &&
       (categoryId === ALL || t.category_id === categoryId),
   );
+  // Totals follow the filters, so they always add up the list below.
+  const { income, spent, net } = summarize(txs);
   const categories = categoryId === ALL ? data.categories : data.categories.filter((c) => c.id === categoryId);
   // Skip categories that didn't exist yet and weren't used that month.
   const tiles = categories.flatMap((c) => {
@@ -96,6 +110,16 @@ export default function History() {
           disabled={month >= currentMonth()}
           onPress={() => setMonth(shiftMonth(month, 1))}
         />
+      </View>
+
+      <View
+        accessible
+        accessibilityLabel={`Income ${formatMoney(income, currency)}, spent ${formatMoney(spent, currency)}, net ${net < 0 ? "minus " : ""}${formatMoney(Math.abs(net), currency)}`}
+        className="flex-row gap-3 rounded-3xl bg-surface p-4 dark:bg-surface-dark"
+      >
+        <Total label="Income" value={formatMoney(income, currency)} />
+        <Total label="Spent" value={formatMoney(spent, currency)} />
+        <Total label="Net" value={`${net < 0 ? "−" : net > 0 ? "+" : ""}${formatMoney(Math.abs(net), currency)}`} />
       </View>
 
       <View className="flex-row items-center justify-between">

@@ -36,10 +36,12 @@ const TYPES = [
 ] as const;
 
 export default function TransactionScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `from` is set by "Log again": a new transaction that starts as a copy of that one.
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const { db, data } = useData();
   if (!data?.currency) return null;
   const existing = data.transactions.find((t) => String(t.id) === id);
+  const template = id === "new" && from ? data.transactions.find((t) => String(t.id) === from) : undefined;
   if (id !== "new" && !existing) return <EmptyState message="This transaction no longer exists." />;
   if (data.accounts.length === 0) {
     return (
@@ -52,31 +54,44 @@ export default function TransactionScreen() {
       />
     );
   }
-  return <TransactionForm key={existing?.id ?? "new"} existing={existing} db={db} data={data} currency={data.currency} />;
+  return (
+    <TransactionForm
+      key={existing?.id ?? `new-${template?.id ?? ""}`}
+      existing={existing}
+      template={template}
+      db={db}
+      data={data}
+      currency={data.currency}
+    />
+  );
 }
 
 function TransactionForm({
   existing,
+  template,
   db,
   data,
   currency,
 }: {
   existing: Transaction | undefined;
+  template: Transaction | undefined;
   db: ReturnType<typeof useData>["db"];
   data: NonNullable<ReturnType<typeof useData>["data"]>;
   currency: string;
 }) {
-  const [type, setType] = useState<TransactionType>(existing?.type ?? "expense");
-  const [amount, setAmount] = useState(existing ? toInputString(existing.amount, currency) : "");
-  const [accountId, setAccountId] = useState<number | null>(existing?.account_id ?? data.accounts[0]?.id ?? null);
-  const [pickedToAccountId, setToAccountId] = useState<number | null>(existing?.to_account_id ?? null);
+  // A copy takes everything but the date, which starts at today like any new entry.
+  const start = existing ?? template;
+  const [type, setType] = useState<TransactionType>(start?.type ?? "expense");
+  const [amount, setAmount] = useState(start ? toInputString(start.amount, currency) : "");
+  const [accountId, setAccountId] = useState<number | null>(start?.account_id ?? data.accounts[0]?.id ?? null);
+  const [pickedToAccountId, setToAccountId] = useState<number | null>(start?.to_account_id ?? null);
   // Picking the destination as the new source clears it, since an account can't transfer to itself.
   const toAccountId = pickedToAccountId === accountId ? null : pickedToAccountId;
-  const [pickedCategoryId, setCategoryId] = useState<number | null>(existing?.category_id ?? null);
+  const [pickedCategoryId, setCategoryId] = useState<number | null>(start?.category_id ?? null);
   // Falls back on render, so a category added from this screen gets picked once it exists.
   const categoryId = pickedCategoryId ?? data.categories[0]?.id ?? null;
   const [date, setDate] = useState(existing?.date ?? toDateString(new Date()));
-  const [note, setNote] = useState(existing?.note ?? "");
+  const [note, setNote] = useState(start?.note ?? "");
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
@@ -174,6 +189,17 @@ function TransactionForm({
       <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />
+      {existing && (
+        <Button
+          title="Log again"
+          icon="add"
+          variant="secondary"
+          // Replaces this screen, so saving the copy returns to where the original was opened from.
+          onPress={() =>
+            router.replace({ pathname: "/transaction/[id]", params: { id: "new", from: String(existing.id) } })
+          }
+        />
+      )}
       {existing && <DeleteButton onConfirm={remove} />}
     </FormScrollView>
   );

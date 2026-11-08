@@ -73,11 +73,12 @@ Examples:
 4. **Log income** — amount, account, date, note (e.g. salary).
 5. **Transfer** — move money between two accounts.
 6. **Dashboard** — total money held ("In your pocket"); each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month. With no categories yet, a "+" tile like the one for accounts adds the first one; after that, an "Add category" tile ends the budgets grid.
-7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account.
-8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, category) narrow the month's transactions and can be combined; the category filter only applies to all types or expenses, and income or transfer filters hide the budgets.
-9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data.
+7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account. A saved transaction has "Log again", which opens a new one filled in the same way (type, amount, accounts, category, note) and dated today.
+8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, category) narrow the month's transactions and can be combined; the category filter only applies to all types or expenses, and income or transfer filters hide the budgets. A summary at the top shows the month's income, spending and net (income minus spending) for the transactions listed, so it follows the filters; transfers don't count. Months with no budget to show skip the Budgets heading.
+9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data. Backup shows the date of the last export from this phone.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
+   - Backup reminder: everything lives only on the phone, so Home shows a "Back up your data" card (opens Settings) once the data is 30 days past its last backup. Without a backup, the 30 days start at the oldest transaction, so a new user isn't reminded right away. Exporting or importing resets it.
 
 ## 4. Data model
 
@@ -97,7 +98,7 @@ Storage: `expo-sqlite` (local database on the device).
 | `categories` | id, name, icon (added in database version 2; defaults to `tag`) |
 | `category_budgets` | category_id, month (`YYYY-MM`), amount — the budget in effect from that month on; latest row at or before a month wins |
 | `transactions` | id, type (`expense` / `income` / `transfer`), amount, date, note, account_id, to_account_id (transfers only), category_id (expenses only) |
-| `settings` | currency |
+| `settings` | currency; theme and last backup date (`last_backup`, YYYY-MM-DD) are phone settings, not part of the backup file |
 
 ## 5. Tech stack
 
@@ -172,6 +173,8 @@ None right now.
 - Cutoff and due days are optional, so cards added before database version 3 keep working. Backups without them import with none; the backup format stays version 1.
 - Naming: "category" is the thing you create, pick and filter by; "budget" is only its monthly amount (the "Budgets" heading, "Monthly budget" field, money left). A category can exist without a budget, and its budget changes by month, so they aren't the same word.
 - The tutorial shows once, right after the currency is picked; it isn't stored, so closing the app mid-tutorial skips the rest.
+- Export counts as a backup once the share sheet closes without an error; the sheet can't tell whether the file was actually saved.
+- "Log again" covers repeated entries (coffee, fares, bills) without recurring transactions, which stay out of scope.
 
 ## 9. Next steps
 

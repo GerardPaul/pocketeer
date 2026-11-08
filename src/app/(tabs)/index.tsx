@@ -3,8 +3,17 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
 import { AddCategoryTile, BudgetGrid, BudgetTile } from "@/components/budget-tile";
-import { Button, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
-import { accountAmount, budgetFor, currentMonth, formatMonth, spentFor } from "@/lib/ledger";
+import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
+import {
+  accountAmount,
+  backupDueDays,
+  budgetFor,
+  currentMonth,
+  daysBetween,
+  formatMonth,
+  spentFor,
+  toDateString,
+} from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
@@ -23,11 +32,36 @@ function AddTile({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
+// Everything lives only on this phone, so a lost phone loses it all unless there's a recent backup file.
+function BackupReminder({ days, backedUp }: { days: number; backedUp: boolean }) {
+  const { tint } = useColors();
+  return (
+    <Card onPress={() => router.push("/settings")}>
+      <View className="flex-row items-center gap-3">
+        <Icon name="download" color={tint} size={22} />
+        <View className="flex-1">
+          <Text className="font-semibold text-base text-ink dark:text-white">Back up your data</Text>
+          <Muted>
+            {backedUp
+              ? `Your last backup was ${days} days ago. Export a new one in Settings.`
+              : "Your data lives only on this phone. Export a backup in Settings."}
+          </Muted>
+        </View>
+        <Icon name="forward" color={tint} size={20} />
+      </View>
+    </Card>
+  );
+}
+
 export default function Home() {
   const { data, error } = useData();
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
   const month = currentMonth();
+  const today = toDateString(new Date());
+  const backupDays = backupDueDays(data.lastBackup, data.transactions, today);
+  // Only mention the last backup when the count actually starts there, not at data logged after it.
+  const fromBackup = data.lastBackup !== null && daysBetween(data.lastBackup, today) === backupDays;
 
   let cash = 0;
   let owed = 0;
@@ -55,6 +89,8 @@ export default function Home() {
           onPress={() => router.push({ pathname: "/transaction/[id]", params: { id: "new" } })}
         />
       </View>
+
+      {backupDays !== null && <BackupReminder days={backupDays} backedUp={fromBackup} />}
 
       <Heading>My accounts</Heading>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">

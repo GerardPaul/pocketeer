@@ -14,7 +14,7 @@ import { isValidCurrency } from "@/lib/money";
 const APP = "pocketeer";
 const VERSION = 1;
 
-export type Backup = Required<{ [K in keyof Data]: NonNullable<Data[K]> }>;
+export type Backup = Required<{ [K in Exclude<keyof Data, "lastBackup">]: NonNullable<Data[K]> }>;
 
 export function toBackupJson(data: Backup, exportedAt: Date): string {
   return JSON.stringify(

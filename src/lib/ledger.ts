@@ -195,3 +195,40 @@ export function shiftMonth(month: string, delta: number): string {
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
+
+// Money in and out across the given transactions. Transfers only move money between accounts, so they don't count.
+export function summarize(txs: readonly Transaction[]): { income: number; spent: number; net: number } {
+  let income = 0;
+  let spent = 0;
+  for (const t of txs) {
+    if (t.type === "income") income += t.amount;
+    else if (t.type === "expense") spent += t.amount;
+  }
+  return { income, spent, net: income - spent };
+}
+
+const BACKUP_EVERY_DAYS = 30;
+
+// Whole days from one YYYY-MM-DD to another, ignoring time zones and daylight saving.
+export function daysBetween(from: string, to: string): number {
+  const utc = (s: string) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
+// Days since the data was last safe in a backup file, or null when no reminder is due. Without a backup, the clock
+// starts at the oldest transaction, so a new user isn't nagged on day one. Data logged after clearing everything starts
+// its own clock, since an older backup doesn't hold it.
+export function backupDueDays(
+  lastBackup: string | null,
+  txs: readonly Transaction[],
+  today: string,
+): number | null {
+  if (txs.length === 0) return null;
+  const oldest = txs.reduce((min, t) => (t.date < min ? t.date : min), txs[0].date);
+  const since = lastBackup && lastBackup > oldest ? lastBackup : oldest;
+  const days = daysBetween(since, today);
+  return days >= BACKUP_EVERY_DAYS ? days : null;
+}

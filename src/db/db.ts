@@ -67,6 +67,8 @@ export async function migrate(db: SQLiteDatabase) {
 
 export type Data = {
   currency: string | null;
+  // Date of the last export from this phone (YYYY-MM-DD); a phone setting, so it isn't part of the backup file.
+  lastBackup: string | null;
   accounts: Account[];
   categories: Category[];
   budgets: CategoryBudget[];
@@ -171,6 +173,13 @@ export async function saveTheme(db: SQLiteDatabase, theme: Theme) {
   );
 }
 
+export async function saveLastBackup(db: SQLiteDatabase, date: string) {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('last_backup', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    date,
+  );
+}
+
 // The theme is a phone preference, not data, so it survives clearing and importing.
 const DELETE_ALL = `
   DELETE FROM transactions;
@@ -186,7 +195,10 @@ export async function clearAllData(db: SQLiteDatabase) {
 }
 
 // Replaces everything in one transaction, so a failed import leaves the old data untouched.
-export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "currency"> & { currency: string }) {
+export async function replaceAllData(
+  db: SQLiteDatabase,
+  data: Omit<Data, "currency" | "lastBackup"> & { currency: string },
+) {
   await db.withTransactionAsync(async () => {
     await db.execAsync(DELETE_ALL);
     await db.runAsync("INSERT INTO settings (key, value) VALUES ('currency', ?)", data.currency);
@@ -218,8 +230,9 @@ export async function replaceAllData(db: SQLiteDatabase, data: Omit<Data, "curre
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
-  const [setting, accounts, categories, budgets, transactions] = await Promise.all([
+  const [setting, backup, accounts, categories, budgets, transactions] = await Promise.all([
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'currency'"),
+    db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'last_backup'"),
     db.getAllAsync<Account>("SELECT * FROM accounts ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<Category>("SELECT * FROM categories ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
@@ -227,6 +240,7 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
   ]);
   return {
     currency: setting?.value ?? null,
+    lastBackup: backup?.value ?? null,
     accounts,
     // The column is plain text, so an unknown name falls back instead of breaking the icon lookup.
     categories: categories.map((c) => ({ ...c, icon: toCategoryIcon(c.icon) })),
