@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button, ErrorText, Field, Muted, TextButton } from "@/components/ui";
+import { Button, ErrorText, Field, Muted } from "@/components/ui";
 import { setCurrency } from "@/db/db";
 import { CURRENCIES } from "@/lib/currencies";
 import { HOME } from "@/lib/routes";
@@ -38,11 +38,6 @@ export default function Setup() {
     <View className="flex-1 bg-canvas dark:bg-canvas-dark">
       <SafeAreaView style={{ flex: 1 }}>
         <View className="flex-1 gap-4 p-4 pt-2">
-          {router.canGoBack() && (
-            <View className="flex-row">
-              <TextButton title="Back" icon="back" onPress={() => router.back()} />
-            </View>
-          )}
           <View className="gap-1 overflow-hidden rounded-3xl bg-primary p-6">
             <View className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent" />
             <Text className="pr-16 font-bold text-2xl text-white">Pick your currency</Text>

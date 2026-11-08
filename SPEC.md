@@ -65,8 +65,8 @@ Examples:
 
 ## 3. MVP features
 
-0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below, and a small "Back" link returns to the welcome screen.
-   After the currency is picked, a five-step tutorial (accounts, budgets, logging, history, backups) runs once, with Back, Skip and Next.
+0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below. It has no on-screen Back; the system back gesture or button returns to the welcome screen.
+   After the currency is picked, a five-step tutorial (accounts, budgets, logging, history, backups) runs once, with Skip and Next. Swiping left goes to the next step, swiping right to the previous one.
 1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed, optional cutoff and due days). In the Accounts tab, tapping an account offers "View transactions" or "Edit account". An account's transactions screen lists everything it was used for, newest first, ten at a time with a "Load more" button, and can be limited to a date range.
 2. **Categories** — create, edit, delete (only if no transactions); set monthly budget; pick an icon (shown in the Categories tab, budget rows, expense rows in history and the category picker). The icon comes first in the form; picking one on a new category fills in a suggested name (e.g. coffee cup → "Coffee") unless the user has typed their own. Editing never renames.
 3. **Log expense** — amount, account, category, date, note.

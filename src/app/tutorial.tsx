@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { PanResponder, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Icon, type IconName, TextButton } from "@/components/ui";
@@ -40,17 +40,36 @@ export default function Tutorial() {
   const { icon, title, body } = STEPS[step];
   const last = step === STEPS.length - 1;
   const finish = () => router.replace(HOME);
+  const go = (by: number) => setStep((s) => Math.min(Math.max(s + by, 0), STEPS.length - 1));
+  // Swipe left goes next, swipe right goes back, like turning a page. Mostly-horizontal drags only, so taps still reach the buttons.
+  const [swipe] = useState(() =>
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -50) go(1);
+        else if (g.dx > 50) go(-1);
+      },
+    }),
+  );
 
   return (
     // NativeWind doesn't style SafeAreaView, so the classes live on plain Views.
     <View className="flex-1 bg-canvas dark:bg-canvas-dark">
       <SafeAreaView style={{ flex: 1 }}>
-        <View className="flex-1 p-6 pt-2">
-          <View className="flex-row justify-between">
-            {step > 0 ? <TextButton title="Back" icon="back" onPress={() => setStep(step - 1)} /> : <View />}
+        <View className="flex-1 p-6 pt-2" {...swipe.panHandlers}>
+          <View className="min-h-11 flex-row justify-end">
             {!last && <TextButton title="Skip" onPress={finish} />}
           </View>
-          <View className="flex-1 items-center justify-center gap-6">
+          {/* Screen readers can't swipe between steps, so they adjust the step instead. */}
+          <View
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel={`${title}. ${body}`}
+            accessibilityValue={{ text: `Step ${step + 1} of ${STEPS.length}` }}
+            accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+            onAccessibilityAction={(e) => go(e.nativeEvent.actionName === "increment" ? 1 : -1)}
+            className="flex-1 items-center justify-center gap-6"
+          >
             <View className="h-28 w-28 items-center justify-center overflow-hidden rounded-[32px] bg-primary">
               <View className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-accent" />
               <Icon name={icon} color="#FFFFFF" size={48} />
@@ -74,7 +93,7 @@ export default function Tutorial() {
                 />
               ))}
             </View>
-            <Button title={last ? "Start using Pocketeer" : "Next"} onPress={last ? finish : () => setStep(step + 1)} />
+            <Button title={last ? "Start using Pocketeer" : "Next"} onPress={last ? finish : () => go(1)} />
           </View>
         </View>
       </SafeAreaView>
