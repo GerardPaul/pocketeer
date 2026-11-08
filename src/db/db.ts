@@ -173,6 +173,18 @@ export async function saveTheme(db: SQLiteDatabase, theme: Theme) {
   );
 }
 
+export async function loadAppLock(db: SQLiteDatabase): Promise<boolean> {
+  const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'app_lock'");
+  return row?.value === "on";
+}
+
+export async function saveAppLock(db: SQLiteDatabase, on: boolean) {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('app_lock', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    on ? "on" : "off",
+  );
+}
+
 export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   await db.runAsync(
     "INSERT INTO settings (key, value) VALUES ('last_backup', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -180,13 +192,13 @@ export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   );
 }
 
-// The theme is a phone preference, not data, so it survives clearing and importing.
+// The theme and app lock are phone preferences, not data, so they survive clearing and importing.
 const DELETE_ALL = `
   DELETE FROM transactions;
   DELETE FROM category_budgets;
   DELETE FROM categories;
   DELETE FROM accounts;
-  DELETE FROM settings WHERE key <> 'theme';
+  DELETE FROM settings WHERE key NOT IN ('theme', 'app_lock');
 `;
 
 // Removes everything, currency included, so the app starts over at the welcome screen.

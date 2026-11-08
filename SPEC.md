@@ -67,17 +67,18 @@ Examples:
 
 0. **Welcome** — first screen on a fresh install (and after clearing data): app logo and name, "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below. It has no on-screen Back; the system back gesture or button returns to the welcome screen.
    After the currency is picked, a five-step tutorial (accounts, budgets, logging, history, backups) runs once, with Skip and Next. Swiping left goes to the next step, swiping right to the previous one.
-1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed, optional cutoff and due days). In the Accounts tab, tapping an account offers "View transactions" or "Edit account". An account's transactions screen lists everything it was used for, newest first, ten at a time with a "Load more" button, and can be limited to a date range.
+1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed, optional cutoff and due days). In the Accounts tab, tapping an account offers "View transactions" or "Edit account". An account's transactions screen lists everything it was used for, newest first, ten at a time with a "Load more" button, and can be limited to a date range. A credit card with a cutoff day shows "This cycle": what was charged to it (expenses and transfers paid from it) since the day after its last cutoff; with a due day it shows the next due date and how many days away it is. Days past a short month's end move to its last day (31 → Feb 28).
 2. **Categories** — create, edit, delete (only if no transactions); set monthly budget; pick an icon (shown in the Categories tab, budget rows, expense rows in history and the category picker). The icon comes first in the form; picking one on a new category fills in a suggested name (e.g. coffee cup → "Coffee") unless the user has typed their own. Editing never renames.
 3. **Log expense** — amount, account, category, date, note.
 4. **Log income** — amount, account, date, note (e.g. salary).
 5. **Transfer** — move money between two accounts.
 6. **Dashboard** — total money held ("In your pocket"); each regular account's balance; each credit card's owed and available credit; each category's spent vs. remaining for the current month. With no categories yet, a "+" tile like the one for accounts adds the first one; after that, an "Add category" tile ends the budgets grid.
 7. **Transaction list** — view, edit, delete past entries. Expense, income and transfer rows have red, green and white icon circles. In the form, accounts and categories are picked from a searchable dropdown, and a transfer's "to" list leaves out the "from" account. A saved transaction has "Log again", which opens a new one filled in the same way (type, amount, accounts, category, note) and dated today.
-8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, category) narrow the month's transactions and can be combined; the category filter only applies to all types or expenses, and income or transfer filters hide the budgets. A summary at the top shows the month's income, spending and net (income minus spending) for the transactions listed, so it follows the filters; transfers don't count. Months with no budget to show skip the Budgets heading.
-9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; export data to a file; import data from a file; clear all data. Backup shows the date of the last export from this phone.
+8. **History** — browse previous months (category spent vs. budget per month). Stops at the current month; no future months. Filters (type, account, category) narrow the month's transactions and can be combined; the category filter only applies to all types or expenses, and income or transfer filters hide the budgets. A summary at the top shows the month's income, spending and net (income minus spending) for the transactions listed, so it follows the filters; transfers don't count. Months with no budget to show skip the Budgets heading. A search box looks through every month (note, category or account name, or amount, with every word having to match); while it's on, the month switcher and budgets step aside and the summary and list cover the matches. Charts: "Spending by category" bars (share of spending, following filters and search) and "Last 6 months" income-vs-spending bars ending at the month shown (following filters; tapping a month opens it).
+9. **Settings** — show currency (chosen at first launch, locked); light/dark theme toggle; app lock (Face ID, fingerprint or the phone's passcode; phones only); export data to a file; import data from a file; clear all data. Backup shows the date of the last export from this phone.
    - Clear all data deletes everything (currency included, so the welcome screen and setup run again) after an explicit warning and confirmation.
    - Import **replaces all existing data**. Show an explicit warning and require confirmation before importing.
+   - App lock: off by default. Turning it on or off asks for Face ID, fingerprint or passcode first, and needs a screen lock set on the phone. When on, the app locks when opened and when brought back after more than 30 seconds away; the lock screen covers everything, pop-up forms included, and what was on screen stays as it was.
    - Backup reminder: everything lives only on the phone, so Home shows a "Back up your data" card (opens Settings) once the data is 30 days past its last backup. Without a backup, the 30 days start at the oldest transaction, so a new user isn't reminded right away. Exporting or importing resets it.
 
 ## 4. Data model
@@ -98,7 +99,7 @@ Storage: `expo-sqlite` (local database on the device).
 | `categories` | id, name, icon (added in database version 2; defaults to `tag`) |
 | `category_budgets` | category_id, month (`YYYY-MM`), amount — the budget in effect from that month on; latest row at or before a month wins |
 | `transactions` | id, type (`expense` / `income` / `transfer`), amount, date, note, account_id, to_account_id (transfers only), category_id (expenses only) |
-| `settings` | currency; theme and last backup date (`last_backup`, YYYY-MM-DD) are phone settings, not part of the backup file |
+| `settings` | currency; theme, app lock (`app_lock`) and last backup date (`last_backup`, YYYY-MM-DD) are phone settings, not part of the backup file |
 
 ## 5. Tech stack
 
@@ -112,6 +113,8 @@ Storage: `expo-sqlite` (local database on the device).
 | Theme | Light by default; Settings has a light/dark toggle, saved on the device (`settings` table, key `theme`). Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
 | Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
 | Icons | Material Symbols outlines drawn with `react-native-svg`, identical on iOS and Android. `scripts/icons.mjs` extracts the paths from the font that ships with `expo-symbols` into `src/components/icon-paths.ts`; rerun it after adding an icon |
+| App lock | `expo-local-authentication` (in Expo Go; on iPhone, Expo Go can't use Face ID and asks for the passcode instead, a real build uses Face ID) |
+| Charts | Plain Views sized by percentage; no chart library |
 | App icon | Lime coin dropping into a stitched white pocket on teal (`assets/logo/pocketeer.svg`). `scripts/logo.mjs` holds the artwork and writes every version: the iOS 1024 icon without transparency, the iOS 26 Liquid Glass layers (`assets/expo.icon`, teal background, ink in dark mode), the Android adaptive foreground, background and monochrome images, the splash icon (teal splash background) and the favicon. Run `node scripts/logo.mjs` (or the `logo` preview config) and open http://localhost:8090 to render them. The artwork lives in `src/components/logo-art.ts`, which the in-app `Logo` also draws: welcome screen, Home header next to the name, and the Settings footer with the app version |
 | Currency formatting | `Intl.NumberFormat` (built in) |
 | Date picker | `@react-native-community/datetimepicker` |
@@ -125,14 +128,13 @@ Storage: `expo-sqlite` (local database on the device).
 ## 6. Out of scope (for now)
 
 Add later only if needed:
-- Charts / graphs
 - Recurring transactions
 - Reminders / notifications
 - Cloud sync / backup
 - Bank account linking
 - Multiple currencies
 - Multiple users / login
-- Credit card statement calculations, due date reminders, interest and minimum payments (cutoff and due days are stored and shown only)
+- Credit card due date reminders, statement balances, interest and minimum payments (the card shows this cycle's charges and the next due date only)
 
 ## 7. Open questions
 
@@ -175,6 +177,8 @@ None right now.
 - The tutorial shows once, right after the currency is picked; it isn't stored, so closing the app mid-tutorial skips the rest.
 - Export counts as a backup once the share sheet closes without an error; the sheet can't tell whether the file was actually saved.
 - "Log again" covers repeated entries (coffee, fares, bills) without recurring transactions, which stay out of scope.
+- App lock waits 30 seconds before locking again, so sharing a backup or picking a file to import doesn't lock the user out mid-task. An unreadable lock setting leaves the app unlocked rather than locking the user out of their own data.
+- History search covers every month, because finding an old entry is the reason to search; the existing filters still apply on top.
 
 ## 9. Next steps
 

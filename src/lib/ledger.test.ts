@@ -4,10 +4,15 @@ import {
   accountAmount,
   backupDueDays,
   budgetFor,
+  cardCycle,
   daysBetween,
   deleteTransactionProblem,
   isRealDate,
+  matchesSearch,
+  monthlyTotals,
+  nextDueDate,
   shiftMonth,
+  spendingByCategory,
   spentFor,
   summarize,
   validateAccount,
@@ -187,5 +192,118 @@ describe("backupDueDays", () => {
 
   it("ignores a backup older than all the data", () => {
     expect(backupDueDays("2025-01-01", [on("2026-10-20")], "2026-11-08")).toBeNull();
+  });
+});
+
+describe("cardCycle", () => {
+  // visa: cutoff day 5, due day 25
+  const charge = (date: string, amount: number, type: Transaction["type"] = "expense") =>
+    tx({ type, amount, account_id: 3, category_id: type === "expense" ? 1 : null, to_account_id: type === "transfer" ? 1 : null, date });
+
+  it("adds charges since the day after the last cutoff", () => {
+    const txs = [charge("2026-11-05", 100), charge("2026-11-06", 200), charge("2026-11-08", 300, "transfer")];
+    expect(cardCycle(visa, txs, "2026-11-08")).toEqual({ since: "2026-11-06", charges: 500 });
+  });
+
+  it("uses last month's cutoff on or before the cutoff day", () => {
+    const txs = [charge("2026-10-05", 100), charge("2026-10-20", 200), charge("2026-11-05", 50)];
+    expect(cardCycle(visa, txs, "2026-11-05")).toEqual({ since: "2026-10-06", charges: 250 });
+  });
+
+  it("leaves out payments into the card and other accounts", () => {
+    const payment = tx({ type: "transfer", amount: 900, account_id: 1, to_account_id: 3, date: "2026-11-07" });
+    const cashSpend = tx({ type: "expense", amount: 400, account_id: 1, category_id: 1, date: "2026-11-07" });
+    expect(cardCycle(visa, [payment, cashSpend], "2026-11-08")?.charges).toBe(0);
+  });
+
+  it("clamps a day-31 cutoff to short months", () => {
+    const card = { ...visa, cutoff_day: 31 };
+    expect(cardCycle(card, [], "2026-03-10")?.since).toBe("2026-03-01");
+  });
+
+  it("is null without a cutoff day or for regular accounts", () => {
+    expect(cardCycle({ ...visa, cutoff_day: null }, [], "2026-11-08")).toBeNull();
+    expect(cardCycle(cash, [], "2026-11-08")).toBeNull();
+  });
+});
+
+describe("nextDueDate", () => {
+  it("is this month's due day when it hasn't passed", () => {
+    expect(nextDueDate(visa, "2026-11-08")).toEqual({ date: "2026-11-25", days: 17 });
+    expect(nextDueDate(visa, "2026-11-25")).toEqual({ date: "2026-11-25", days: 0 });
+  });
+
+  it("moves to next month after the due day, across the year end", () => {
+    expect(nextDueDate(visa, "2026-12-26")).toEqual({ date: "2027-01-25", days: 30 });
+  });
+
+  it("clamps a day-31 due date to short months", () => {
+    expect(nextDueDate({ ...visa, due_day: 31 }, "2027-02-10")).toEqual({ date: "2027-02-28", days: 18 });
+  });
+
+  it("is null without a due day", () => {
+    expect(nextDueDate({ ...visa, due_day: null }, "2026-11-08")).toBeNull();
+  });
+});
+
+describe("matchesSearch", () => {
+  const names = {
+    accounts: new Map([[1, "Cash"], [3, "Visa"]]),
+    categories: new Map([[1, "Food"]]),
+  };
+  const lunch = tx({ type: "expense", amount: 125050, account_id: 1, category_id: 1, note: "Lunch with Ana" });
+  const pay = tx({ type: "transfer", amount: 30000, account_id: 1, to_account_id: 3 });
+  const find = (t: Transaction, q: string) => matchesSearch(t, q, names, 2);
+
+  it("matches notes, categories and accounts, ignoring case", () => {
+    expect(find(lunch, "ana")).toBe(true);
+    expect(find(lunch, "FOOD")).toBe(true);
+    expect(find(pay, "visa")).toBe(true);
+    expect(find(lunch, "visa")).toBe(false);
+  });
+
+  it("matches amounts with or without grouping and decimals", () => {
+    expect(find(lunch, "1250")).toBe(true);
+    expect(find(lunch, "1,250.50")).toBe(true);
+    expect(find(lunch, "1251")).toBe(false);
+  });
+
+  it("needs every word to match", () => {
+    expect(find(lunch, "lunch 1250")).toBe(true);
+    expect(find(lunch, "lunch visa")).toBe(false);
+  });
+
+  it("matches everything for an empty search, and nothing for stray marks", () => {
+    expect(find(pay, "  ")).toBe(true);
+    expect(find(pay, ".")).toBe(false);
+  });
+});
+
+describe("charts", () => {
+  it("totals spending per category, biggest first, leaving out income and transfers", () => {
+    const txs = [
+      tx({ type: "expense", amount: 100, account_id: 1, category_id: 1 }),
+      tx({ type: "expense", amount: 500, account_id: 1, category_id: 2 }),
+      tx({ type: "expense", amount: 150, account_id: 3, category_id: 1 }),
+      tx({ type: "income", amount: 9000, account_id: 1 }),
+      tx({ type: "transfer", amount: 700, account_id: 1, to_account_id: 3 }),
+    ];
+    expect(spendingByCategory(txs)).toEqual([
+      { categoryId: 2, amount: 500 },
+      { categoryId: 1, amount: 250 },
+    ]);
+  });
+
+  it("gives every month in the range, oldest first, across the year end, empty months as zero", () => {
+    const txs = [
+      tx({ type: "income", amount: 1000, account_id: 1, date: "2026-12-15" }),
+      tx({ type: "expense", amount: 300, account_id: 1, category_id: 1, date: "2027-02-01" }),
+      tx({ type: "expense", amount: 999, account_id: 1, category_id: 1, date: "2026-10-31" }),
+    ];
+    expect(monthlyTotals(txs, "2027-02", 3)).toEqual([
+      { month: "2026-12", income: 1000, spent: 0 },
+      { month: "2027-01", income: 0, spent: 0 },
+      { month: "2027-02", income: 0, spent: 300 },
+    ]);
   });
 });

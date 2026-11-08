@@ -2,10 +2,33 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
+import { CategoryBars, MonthBars } from "@/components/charts";
 import { TransactionList } from "@/components/transaction-list";
-import { ErrorText, Heading, Icon, type IconName, Muted, Segmented, Select, TextButton, useColors } from "@/components/ui";
-import { type TransactionType, budgetFor, currentMonth, formatMonth, shiftMonth, spentFor, summarize } from "@/lib/ledger";
-import { formatMoney } from "@/lib/money";
+import {
+  ErrorText,
+  Field,
+  Heading,
+  Icon,
+  type IconName,
+  Muted,
+  Segmented,
+  Select,
+  TextButton,
+  useColors,
+} from "@/components/ui";
+import {
+  type TransactionType,
+  budgetFor,
+  currentMonth,
+  formatMonth,
+  matchesSearch,
+  monthlyTotals,
+  shiftMonth,
+  spendingByCategory,
+  spentFor,
+  summarize,
+} from "@/lib/ledger";
+import { currencyDigits, formatMoney } from "@/lib/money";
 import { useData } from "@/lib/use-data";
 
 function MonthButton({
@@ -63,6 +86,7 @@ export default function History() {
   const [type, setType] = useState<TransactionType | "all">("all");
   const [accountId, setAccountId] = useState(ALL);
   const [categoryId, setCategoryId] = useState(ALL);
+  const [query, setQuery] = useState("");
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
 
@@ -79,13 +103,28 @@ export default function History() {
     setCategoryId(ALL);
   };
 
-  const txs = data.transactions.filter(
+  // A search looks through every month, so the month switcher and budgets step aside while it's on.
+  const searching = query.trim() !== "";
+  const names = {
+    accounts: new Map(data.accounts.map((a) => [a.id, a.name])),
+    categories: new Map(data.categories.map((c) => [c.id, c.name])),
+  };
+  const digits = currencyDigits(currency);
+  const filtered = data.transactions.filter(
     (t) =>
-      t.date.startsWith(month) &&
       (type === "all" || t.type === type) &&
       (accountId === ALL || t.account_id === accountId || t.to_account_id === accountId) &&
       (categoryId === ALL || t.category_id === categoryId),
   );
+  const txs = filtered.filter((t) =>
+    searching ? matchesSearch(t, query, names, digits) : t.date.startsWith(month),
+  );
+  const categoryRows = spendingByCategory(txs).map(({ categoryId: id, amount }) => {
+    const c = data.categories.find((x) => x.id === id);
+    return { key: id, label: c?.name ?? "Deleted category", icon: c?.icon ?? ("tag" as const), amount };
+  });
+  // The trend uses the same filters as the list, so it compares like with like across months.
+  const trend = monthlyTotals(filtered, month, 6);
   // Totals follow the filters, so they always add up the list below.
   const { income, spent, net } = summarize(txs);
   const categories = categoryId === ALL ? data.categories : data.categories.filter((c) => c.id === categoryId);
@@ -97,20 +136,40 @@ export default function History() {
   });
 
   return (
-    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
-      <View className="flex-row items-center justify-between rounded-full bg-surface p-1 dark:bg-surface-dark">
-        <MonthButton label="Previous month" icon="back" onPress={() => setMonth(shiftMonth(month, -1))} />
-        <Text accessibilityRole="header" className="font-semibold text-lg text-ink dark:text-white">
-          {formatMonth(month)}
-        </Text>
-        {/* Nothing can be logged in the future, so history stops at this month. */}
-        <MonthButton
-          label="Next month"
-          icon="forward"
-          disabled={month >= currentMonth()}
-          onPress={() => setMonth(shiftMonth(month, 1))}
-        />
-      </View>
+    <ScrollView
+      className="flex-1 bg-canvas dark:bg-canvas-dark"
+      contentContainerClassName="gap-3 p-4 pb-8"
+      keyboardShouldPersistTaps="handled"
+    >
+      <Field
+        label="Search all months"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Note, category, account or amount"
+        autoCorrect={false}
+        returnKeyType="search"
+        clearButtonMode="while-editing"
+      />
+      {searching ? (
+        <View className="flex-row items-center justify-between">
+          <Muted>{`${txs.length} ${txs.length === 1 ? "match" : "matches"} in all months`}</Muted>
+          <TextButton title="Clear search" onPress={() => setQuery("")} />
+        </View>
+      ) : (
+        <View className="flex-row items-center justify-between rounded-full bg-surface p-1 dark:bg-surface-dark">
+          <MonthButton label="Previous month" icon="back" onPress={() => setMonth(shiftMonth(month, -1))} />
+          <Text accessibilityRole="header" className="font-semibold text-lg text-ink dark:text-white">
+            {formatMonth(month)}
+          </Text>
+          {/* Nothing can be logged in the future, so history stops at this month. */}
+          <MonthButton
+            label="Next month"
+            icon="forward"
+            disabled={month >= currentMonth()}
+            onPress={() => setMonth(shiftMonth(month, 1))}
+          />
+        </View>
+      )}
 
       <View
         accessible
@@ -168,7 +227,7 @@ export default function History() {
         </View>
       )}
 
-      {budgetFilter && tiles.length > 0 && (
+      {!searching && budgetFilter && tiles.length > 0 && (
         <>
           <Heading>Budgets</Heading>
           <BudgetGrid>
@@ -178,7 +237,20 @@ export default function History() {
           </BudgetGrid>
         </>
       )}
-      {budgetFilter && data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
+      {!searching && budgetFilter && data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
+
+      {categoryRows.length > 0 && (
+        <>
+          <Heading>Spending by category</Heading>
+          <CategoryBars rows={categoryRows} currency={currency} />
+        </>
+      )}
+      {!searching && trend.some((m) => m.income > 0 || m.spent > 0) && (
+        <>
+          <Heading>Last 6 months</Heading>
+          <MonthBars months={trend} selected={month} onSelect={setMonth} currency={currency} />
+        </>
+      )}
 
       <View className="mt-3">
         <TransactionList
@@ -187,7 +259,13 @@ export default function History() {
           data={data}
           currency={currency}
           accountId={accountId === ALL ? undefined : accountId}
-          empty={activeFilters ? "Nothing matches these filters this month." : "Nothing logged this month."}
+          empty={
+            searching
+              ? "Nothing matches this search."
+              : activeFilters
+                ? "Nothing matches these filters this month."
+                : "Nothing logged this month."
+          }
         />
       </View>
     </ScrollView>

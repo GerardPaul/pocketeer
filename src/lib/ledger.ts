@@ -232,3 +232,91 @@ export function backupDueDays(
   const days = daysBetween(since, today);
   return days >= BACKUP_EVERY_DAYS ? days : null;
 }
+
+// The given day in that month, moved back to the month's last day when it's shorter (day 31 in February → 28 or 29).
+function dayInMonth(year: number, month0: number, day: number): string {
+  const last = new Date(year, month0 + 1, 0).getDate();
+  return toDateString(new Date(year, month0, Math.min(day, last)));
+}
+
+function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return toDateString(new Date(y, m - 1, d + days));
+}
+
+// What's been charged to a card since its last cutoff: expenses and transfers paid from it. Payments into the card
+// don't reduce it, since this is the new statement building up, not the amount owed (that's accountAmount).
+export function cardCycle(
+  account: Account,
+  txs: readonly Transaction[],
+  today: string,
+): { since: string; charges: number } | null {
+  if (account.type !== "credit_card" || account.cutoff_day === null) return null;
+  const [y, m] = today.split("-").map(Number);
+  let cutoff = dayInMonth(y, m - 1, account.cutoff_day);
+  if (cutoff >= today) cutoff = dayInMonth(y, m - 2, account.cutoff_day);
+  let charges = 0;
+  for (const t of txs) {
+    if (t.account_id === account.id && t.type !== "income" && t.date > cutoff && t.date <= today) charges += t.amount;
+  }
+  return { since: addDays(cutoff, 1), charges };
+}
+
+// The next due date on or after today, and how many days away it is.
+export function nextDueDate(account: Account, today: string): { date: string; days: number } | null {
+  if (account.type !== "credit_card" || account.due_day === null) return null;
+  const [y, m] = today.split("-").map(Number);
+  let date = dayInMonth(y, m - 1, account.due_day);
+  if (date < today) date = dayInMonth(y, m, account.due_day);
+  return { date, days: daysBetween(today, date) };
+}
+
+// Search words each have to match the note, a category or account name, or the amount ("1250", "1,250.50").
+// `names` maps account and category ids to names; amounts compare as plain digits so grouping marks don't matter.
+export function matchesSearch(
+  t: Transaction,
+  query: string,
+  names: { accounts: ReadonlyMap<number, string>; categories: ReadonlyMap<number, string> },
+  digits: number,
+): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const text = [
+    t.note,
+    names.accounts.get(t.account_id),
+    t.to_account_id !== null ? names.accounts.get(t.to_account_id) : "",
+    t.category_id !== null ? names.categories.get(t.category_id) : "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  const amount = (t.amount / 10 ** digits).toFixed(digits);
+  return words.every((w) => {
+    if (text.includes(w)) return true;
+    const number = w.replace(/[^\d.]/g, "");
+    return number !== "" && /\d/.test(number) && amount.startsWith(number);
+  });
+}
+
+// Expense totals per category, biggest first.
+export function spendingByCategory(txs: readonly Transaction[]): { categoryId: number; amount: number }[] {
+  const totals = new Map<number, number>();
+  for (const t of txs) {
+    if (t.type === "expense" && t.category_id !== null) {
+      totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount);
+    }
+  }
+  return [...totals].map(([categoryId, amount]) => ({ categoryId, amount })).sort((a, b) => b.amount - a.amount);
+}
+
+// Income and spending for each of the `count` months ending at `lastMonth`, oldest first.
+export function monthlyTotals(
+  txs: readonly Transaction[],
+  lastMonth: string,
+  count: number,
+): { month: string; income: number; spent: number }[] {
+  const months = Array.from({ length: count }, (_, i) => shiftMonth(lastMonth, i - count + 1));
+  return months.map((month) => {
+    const { income, spent } = summarize(txs.filter((t) => t.date.startsWith(month)));
+    return { month, income, spent };
+  });
+}

@@ -4,6 +4,7 @@ import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { APP_LOCK_SUPPORTED, useAppLock } from "@/components/app-lock";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
@@ -22,6 +23,7 @@ export default function Settings() {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const { muted } = useColors();
   const toast = useToast();
+  const lock = useAppLock();
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
@@ -34,6 +36,13 @@ export default function Settings() {
     } catch (e) {
       setProblem(`Couldn't save the theme: ${String(e)}`);
     }
+  }
+
+  async function changeLock(on: boolean) {
+    setProblem(null);
+    const error = await lock.setEnabled(on);
+    if (error) setProblem(error);
+    else toast(on ? "App lock on" : "App lock off");
   }
 
   async function exportData() {
@@ -114,6 +123,22 @@ export default function Settings() {
         value={scheme}
         onChange={changeTheme}
       />
+
+      {APP_LOCK_SUPPORTED && (
+        <>
+          <Heading>Security</Heading>
+          <Segmented
+            label="Lock with Face ID, fingerprint or passcode"
+            options={[
+              { value: "off", label: "Off" },
+              { value: "on", label: "On" },
+            ]}
+            value={lock.enabled ? "on" : "off"}
+            onChange={(v) => changeLock(v === "on")}
+          />
+          <Muted>Asks when the app opens and when you come back after 30 seconds away.</Muted>
+        </>
+      )}
 
       <Heading>Backup</Heading>
       <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>

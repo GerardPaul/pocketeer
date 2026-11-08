@@ -1,9 +1,21 @@
 import { Pressable, Text, View } from "react-native";
 
 import { Icon } from "@/components/ui";
-import { type Account, type Transaction, accountAmount } from "@/lib/ledger";
+import { type Account, type Transaction, accountAmount, cardCycle, nextDueDate, toDateString } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import palette from "@/lib/palette";
+
+// "Nov 25" in the phone's language.
+function shortDate(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(y, m - 1, d));
+}
+
+function dueText(days: number, date: string): string {
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return `Due ${shortDate(date)} · in ${days} days`;
+}
 
 // Colored card per account: cyan with ink text for regular, deep teal with a green corner for credit cards.
 export function AccountCard({
@@ -20,6 +32,9 @@ export function AccountCard({
   const amount = accountAmount(account, transactions);
   const card = account.type === "credit_card";
   const text = card ? "text-white" : "text-ink";
+  const today = toDateString(new Date());
+  const cycle = cardCycle(account, transactions, today);
+  const due = nextDueDate(account, today);
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,16 +59,12 @@ export function AccountCard({
             Available {formatMoney((account.credit_limit ?? 0) - amount, currency)}
           </Text>
         )}
-        {card && (account.cutoff_day !== null || account.due_day !== null) && (
+        {cycle && (
           <Text className={`font-regular text-xs ${text}`}>
-            {[
-              account.cutoff_day !== null && `Cutoff: day ${account.cutoff_day}`,
-              account.due_day !== null && `Due: day ${account.due_day}`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            {`This cycle: ${formatMoney(cycle.charges, currency)} since ${shortDate(cycle.since)}`}
           </Text>
         )}
+        {due && <Text className={`font-regular text-xs ${text}`}>{dueText(due.days, due.date)}</Text>}
       </View>
     </Pressable>
   );

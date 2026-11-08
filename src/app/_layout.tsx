@@ -11,8 +11,9 @@ import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 
+import { AppLockProvider } from "@/components/app-lock";
 import { ToastProvider } from "@/components/toast";
-import { loadTheme, migrate } from "@/db/db";
+import { loadAppLock, loadTheme, migrate } from "@/db/db";
 import palette from "@/lib/palette";
 
 SplashScreen.preventAutoHideAsync();
@@ -73,12 +74,18 @@ function AppStack() {
   const db = useSQLiteContext();
   const { colorScheme: scheme } = useColorScheme();
   const [ready, setReady] = useState(false);
+  const [lockOn, setLockOn] = useState(false);
 
   useEffect(() => {
-    loadTheme(db)
-      .then((theme) => colorScheme.set(theme))
-      .catch(() => colorScheme.set("light")) // unreadable setting: fall back to the default
-      .finally(() => setReady(true));
+    Promise.all([
+      loadTheme(db)
+        .then((theme) => colorScheme.set(theme))
+        .catch(() => colorScheme.set("light")), // unreadable setting: fall back to the default
+      // ponytail: an unreadable lock setting leaves the app unlocked; data stays readable to anyone with the phone.
+      loadAppLock(db)
+        .then(setLockOn)
+        .catch(() => setLockOn(false)),
+    ]).finally(() => setReady(true));
   }, [db]);
 
   if (!ready) return null;
@@ -86,17 +93,19 @@ function AppStack() {
   return (
     <ThemeProvider value={scheme === "dark" ? dark : light}>
       <ToastProvider>
-        <Stack screenOptions={{ headerShadowVisible: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
-          <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
-          <Stack.Screen name="setup" options={{ headerShown: false, title: "Currency" }} />
-          <Stack.Screen name="tutorial" options={{ headerShown: false, title: "Tutorial", gestureEnabled: false }} />
-          {/* Default titles cover loading and empty states; the forms set a more specific one. */}
-          <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
-          <Stack.Screen name="account/transactions/[id]" options={{ headerShown: false, title: "Transactions" }} />
-          <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
-          <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
-        </Stack>
+        <AppLockProvider initial={lockOn}>
+          <Stack screenOptions={{ headerShadowVisible: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+            <Stack.Screen name="welcome" options={{ headerShown: false, title: "Welcome" }} />
+            <Stack.Screen name="setup" options={{ headerShown: false, title: "Currency" }} />
+            <Stack.Screen name="tutorial" options={{ headerShown: false, title: "Tutorial", gestureEnabled: false }} />
+            {/* Default titles cover loading and empty states; the forms set a more specific one. */}
+            <Stack.Screen name="account/[id]" options={{ presentation: "modal", title: "Account" }} />
+            <Stack.Screen name="account/transactions/[id]" options={{ headerShown: false, title: "Transactions" }} />
+            <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
+            <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
+          </Stack>
+        </AppLockProvider>
       </ToastProvider>
     </ThemeProvider>
   );

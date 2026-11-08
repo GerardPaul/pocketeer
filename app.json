@@ -35,7 +35,13 @@
       ],
       "expo-sqlite",
       "expo-sharing",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Pocketeer to use Face ID to unlock your budget."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
