@@ -1,4 +1,3 @@
-import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
 import { useColorScheme } from "nativewind";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { type ReactNode, useState } from "react";
@@ -16,76 +15,87 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
+import { ICON_PATHS } from "@/components/icon-paths";
 import type { CategoryIcon } from "@/lib/category-icons";
 import { cleanTextInput } from "@/lib/input";
 import { formatAmountInput } from "@/lib/money";
 import palette from "@/lib/palette";
 
-// SF Symbols on iOS, Material Symbols on Android and web.
-// Record over CategoryIcon makes a missing glyph for a category icon a type error.
-const CATEGORY_GLYPHS: Record<CategoryIcon, [SFSymbol, AndroidSymbol]> = {
-  tag: ["tag.fill", "sell"],
-  food: ["fork.knife", "restaurant"],
-  groceries: ["cart.fill", "shopping_cart"],
-  coffee: ["cup.and.saucer.fill", "local_cafe"],
-  transport: ["car.fill", "directions_car"],
-  commute: ["bus.fill", "directions_bus"],
-  fuel: ["fuelpump.fill", "local_gas_station"],
-  house: ["house.fill", "home"],
-  bills: ["bolt.fill", "bolt"],
-  water: ["drop.fill", "water_drop"],
-  phone: ["iphone", "smartphone"],
-  internet: ["wifi", "wifi"],
-  health: ["cross.case.fill", "medical_services"],
-  fitness: ["figure.run", "fitness_center"],
-  shopping: ["bag.fill", "shopping_bag"],
-  clothes: ["tshirt.fill", "checkroom"],
-  fun: ["film.fill", "movie"],
-  games: ["gamecontroller.fill", "sports_esports"],
-  education: ["book.fill", "menu_book"],
-  gifts: ["gift.fill", "redeem"],
-  travel: ["airplane", "flight"],
-  pets: ["pawprint.fill", "pets"],
-  family: ["person.2.fill", "group"],
-  savings: ["banknote.fill", "savings"],
-  subscriptions: ["arrow.triangle.2.circlepath", "autorenew"],
+// Material Symbols names. They're drawn as SVG paths (icon-paths.ts, made by scripts/icons.mjs) so every platform
+// shows the same, centered icon; drawing them as font text placed them differently on iOS.
+// Record over CategoryIcon makes a missing glyph for a category icon a type error, and IconSymbol makes
+// one missing from icon-paths.ts (scripts/icons.mjs not rerun) a type error too.
+type IconSymbol = keyof typeof ICON_PATHS;
+const CATEGORY_GLYPHS: Record<CategoryIcon, IconSymbol> = {
+  tag: "sell",
+  food: "restaurant",
+  groceries: "shopping_cart",
+  coffee: "local_cafe",
+  transport: "directions_car",
+  commute: "directions_bus",
+  fuel: "local_gas_station",
+  house: "home",
+  bills: "bolt",
+  water: "water_drop",
+  phone: "smartphone",
+  internet: "wifi",
+  health: "medical_services",
+  fitness: "fitness_center",
+  shopping: "shopping_bag",
+  clothes: "checkroom",
+  fun: "movie",
+  games: "sports_esports",
+  education: "menu_book",
+  gifts: "redeem",
+  travel: "flight",
+  pets: "pets",
+  family: "group",
+  savings: "savings",
+  subscriptions: "autorenew",
 };
 
 const ICONS = {
   ...CATEGORY_GLYPHS,
-  home: ["house.fill", "home"],
-  history: ["clock.fill", "history"],
-  wallet: ["wallet.bifold.fill", "account_balance_wallet"],
-  settings: ["gearshape.fill", "settings"],
-  add: ["plus", "add"],
-  expense: ["arrow.up.right", "north_east"],
-  income: ["arrow.down.left", "south_west"],
-  transfer: ["arrow.left.arrow.right", "swap_horiz"],
-  back: ["chevron.left", "chevron_left"],
-  forward: ["chevron.right", "chevron_right"],
-  card: ["creditcard.fill", "credit_card"],
-  cash: ["banknote.fill", "payments"],
-  share: ["square.and.arrow.up", "ios_share"],
-  download: ["square.and.arrow.down", "download"],
-  lock: ["lock.fill", "lock"],
-  trash: ["trash.fill", "delete"],
-  down: ["chevron.down", "expand_more"],
-  close: ["xmark", "close"],
-  search: ["magnifyingglass", "search"],
-  check: ["checkmark.circle.fill", "check_circle"],
-  up: ["chevron.up", "expand_less"],
-  filter: ["line.3.horizontal.decrease.circle", "filter_list"],
-  edit: ["pencil", "edit"],
-  list: ["list.bullet", "receipt_long"],
-} satisfies Record<string, [SFSymbol, AndroidSymbol]>;
+  home: "home",
+  history: "history",
+  wallet: "account_balance_wallet",
+  settings: "settings",
+  add: "add",
+  expense: "north_east",
+  income: "south_west",
+  transfer: "swap_horiz",
+  back: "chevron_left",
+  forward: "chevron_right",
+  card: "credit_card",
+  cash: "payments",
+  share: "ios_share",
+  download: "download",
+  lock: "lock",
+  trash: "delete",
+  down: "expand_more",
+  close: "close",
+  search: "search",
+  check: "check_circle",
+  up: "expand_less",
+  filter: "filter_list",
+  edit: "edit",
+  list: "receipt_long",
+} satisfies Record<string, IconSymbol>;
 
 export type IconName = keyof typeof ICONS;
 
 // Icons are decorative; the text next to them carries the meaning.
 export function Icon({ name, color, size = 22 }: { name: IconName; color: ColorValue; size?: number }) {
-  const [ios, android] = ICONS[name];
-  return <SymbolView name={{ ios, android, web: android }} size={size} tintColor={color} aria-hidden />;
+  return (
+    // The View hides it from screen readers; Svg would pass those props straight to the DOM on web.
+    <View aria-hidden>
+      <Svg width={size} height={size} viewBox="0 -960 960 960">
+        <Path d={ICON_PATHS[ICONS[name]]} fill={color} />
+      </Svg>
+    </View>
+  );
 }
 
 // Raw colors for things classes can't reach (icon tints).

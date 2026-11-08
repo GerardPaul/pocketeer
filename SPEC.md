@@ -110,7 +110,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Styling | NativeWind 4.2.7 + Tailwind CSS 3 on plain React Native components; no UI kit |
 | Theme | Light by default; Settings has a light/dark toggle, saved on the device (`settings` table, key `theme`). Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
 | Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
-| Icons | `expo-symbols` (SF Symbols on iOS, Material Symbols on Android/web); no icon library |
+| Icons | Material Symbols outlines drawn with `react-native-svg`, identical on iOS and Android. `scripts/icons.mjs` extracts the paths from the font that ships with `expo-symbols` into `src/components/icon-paths.ts`; rerun it after adding an icon |
 | Currency formatting | `Intl.NumberFormat` (built in) |
 | Date picker | `@react-native-community/datetimepicker` |
 | Export | `expo-file-system` + `expo-sharing` |
@@ -156,7 +156,7 @@ None right now.
 - Visual design: rounded cards, colored hero and account cards, inspired by a finance app mockup. Restyle only, no charts.
 - Clear all data also resets the currency, so the user can start over with a different one. The theme is kept.
 - Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import.
-- Tabs and buttons use `expo-symbols` icons; `@expo/vector-icons` skipped (deprecated by Expo).
+- Icons are SVG paths taken from the Material Symbols font rather than the font itself or platform symbols: SF Symbols differ from Android's, and font glyphs sat off-center and clipped on iOS. `@expo/vector-icons` skipped (deprecated by Expo).
 - Forms: amount fields start empty with a "0" placeholder; Save stays disabled until required fields are valid (a blank starting balance counts as 0). Balance rules are still checked on save so the error can name the account.
 - Input filtering: amount fields accept digits and one decimal separator only; text fields drop control characters and are length-capped; all database queries use bound parameters.
 - Transaction dates can't be in the future (date picker capped at today; the form blocks later dates). Import doesn't apply this rule, so an older backup with future dates still loads.

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import { PanResponder, Text, View } from "react-native";
+import { useLayoutEffect, useState } from "react";
+import { Animated, PanResponder, Text, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Icon, type IconName, TextButton } from "@/components/ui";
@@ -36,11 +37,25 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
 
 // Shown once, right after the currency is picked.
 export default function Tutorial() {
-  const [step, setStep] = useState(0);
+  // dir is the side the new page comes from; kept with step so a swipe past either end changes nothing.
+  const [{ step, dir }, setPage] = useState({ step: 0, dir: 1 });
+  const [slide] = useState(() => new Animated.Value(0));
+  const reduceMotion = useReducedMotion();
   const { icon, title, body } = STEPS[step];
   const last = step === STEPS.length - 1;
   const finish = () => router.replace(HOME);
-  const go = (by: number) => setStep((s) => Math.min(Math.max(s + by, 0), STEPS.length - 1));
+  const go = (by: number) =>
+    setPage((p) => {
+      const next = Math.min(Math.max(p.step + by, 0), STEPS.length - 1);
+      return next === p.step ? p : { step: next, dir: by };
+    });
+  // Each new page slides and fades in from the side it came from, so a swipe visibly turns the page.
+  // Layout effect so the new page never paints in place before the slide starts.
+  useLayoutEffect(() => {
+    if (reduceMotion) return;
+    slide.setValue(dir);
+    Animated.timing(slide, { toValue: 0, duration: 250, useNativeDriver: true }).start();
+  }, [step, dir, slide, reduceMotion]);
   // Swipe left goes next, swipe right goes back, like turning a page. Mostly-horizontal drags only, so taps still reach the buttons.
   const [swipe] = useState(() =>
     PanResponder.create({
@@ -68,18 +83,27 @@ export default function Tutorial() {
             accessibilityValue={{ text: `Step ${step + 1} of ${STEPS.length}` }}
             accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
             onAccessibilityAction={(e) => go(e.nativeEvent.actionName === "increment" ? 1 : -1)}
-            className="flex-1 items-center justify-center gap-6"
+            className="flex-1 justify-center overflow-hidden"
           >
-            <View className="h-28 w-28 items-center justify-center overflow-hidden rounded-[32px] bg-primary">
-              <View className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-accent" />
-              <Icon name={icon} color="#FFFFFF" size={48} />
-            </View>
-            <View className="items-center gap-2">
-              <Text accessibilityRole="header" className="text-center font-bold text-2xl text-ink dark:text-white">
-                {title}
-              </Text>
-              <Text className="text-center font-regular text-base text-muted dark:text-muted-dark">{body}</Text>
-            </View>
+            <Animated.View
+              style={{
+                alignItems: "center",
+                gap: 24,
+                opacity: slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
+                transform: [{ translateX: slide.interpolate({ inputRange: [-1, 1], outputRange: [-120, 120] }) }],
+              }}
+            >
+              <View className="h-28 w-28 items-center justify-center overflow-hidden rounded-[32px] bg-primary">
+                <View className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-accent" />
+                <Icon name={icon} color="#FFFFFF" size={48} />
+              </View>
+              <View className="items-center gap-2">
+                <Text accessibilityRole="header" className="text-center font-bold text-2xl text-ink dark:text-white">
+                  {title}
+                </Text>
+                <Text className="text-center font-regular text-base text-muted dark:text-muted-dark">{body}</Text>
+              </View>
+            </Animated.View>
           </View>
           <View className="gap-6">
             <View
