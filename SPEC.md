@@ -159,7 +159,7 @@ None right now.
 - Import validates the whole file (fields, references, balance rules) before replacing anything, and replaces in one database transaction.
 - Visual design: rounded cards, colored hero and account cards, inspired by a finance app mockup. Restyle only, no charts.
 - Clear all data also resets the currency, so the user can start over with a different one. The theme is kept.
-- Theme defaults to light instead of following the phone (`userInterfaceStyle: "light"` in app.json, so the splash and native views start light too); the choice is a device preference, so it isn't exported and survives an import.
+- Theme defaults to light instead of following the phone; the choice is a device preference, so it isn't exported and survives an import. The light default is set in code, not in app.json: `userInterfaceStyle` stays "automatic" because "light" pins the app on iOS and the Settings toggle can't switch to dark.
 - Icons are SVG paths taken from the Material Symbols font rather than the font itself or platform symbols: SF Symbols differ from Android's, and font glyphs sat off-center and clipped on iOS. `@expo/vector-icons` skipped (deprecated by Expo).
 - Forms: amount fields start empty with a "0" placeholder; Save stays disabled until required fields are valid (a blank starting balance counts as 0). Balance rules are still checked on save so the error can name the account.
 - Input filtering: amount fields accept digits and one decimal separator only; text fields drop control characters and are length-capped; all database queries use bound parameters.
