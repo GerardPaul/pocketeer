@@ -169,6 +169,8 @@ function TransactionForm({
           />
         ))}
       <DateField label="Date" value={date} onChange={setDate} max={today} />
+      {/* Phone pickers stop at today; typed web dates can still land in the future. */}
+      {date > today && <ErrorText>The date can’t be in the future.</ErrorText>}
       <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />

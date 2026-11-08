@@ -75,6 +75,12 @@ export default function History() {
       (categoryId === ALL || t.category_id === categoryId),
   );
   const categories = categoryId === ALL ? data.categories : data.categories.filter((c) => c.id === categoryId);
+  // Skip categories that didn't exist yet and weren't used that month.
+  const tiles = categories.flatMap((c) => {
+    const spent = spentFor(c.id, month, data.transactions);
+    const budget = budgetFor(c.id, month, data.budgets);
+    return budget === null && spent === 0 ? [] : [{ ...c, spent, budget }];
+  });
 
   return (
     <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
@@ -138,23 +144,17 @@ export default function History() {
         </View>
       )}
 
-      {budgetFilter && (
+      {budgetFilter && tiles.length > 0 && (
         <>
           <Heading>Budgets</Heading>
           <BudgetGrid>
-            {categories.map((c) => {
-              const spent = spentFor(c.id, month, data.transactions);
-              const budget = budgetFor(c.id, month, data.budgets);
-              // Skip categories that didn't exist yet and weren't used that month.
-              if (budget === null && spent === 0) return null;
-              return (
-                <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={spent} budget={budget} currency={currency} />
-              );
-            })}
+            {tiles.map((c) => (
+              <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={c.spent} budget={c.budget} currency={currency} />
+            ))}
           </BudgetGrid>
-          {data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
         </>
       )}
+      {budgetFilter && data.categories.length === 0 && <Muted>Add categories to see budgets here.</Muted>}
 
       <View className="mt-3">
         <TransactionList

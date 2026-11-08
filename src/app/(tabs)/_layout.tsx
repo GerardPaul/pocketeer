@@ -12,7 +12,8 @@ function tabIcon(name: IconName) {
 }
 
 // Home's header carries the brand: logo plus app name. The navigator doesn't pass a title color here on native,
-// so the text takes the app's own theme color.
+// so the text takes the app's own theme color. It's rendered as <BrandTitle /> because the header calls headerTitle
+// as a plain function, and the hook inside needs a component of its own.
 function BrandTitle() {
   const { text } = useColors();
   return (
@@ -40,7 +41,7 @@ export default function TabsLayout() {
         tabBarStyle: { borderTopWidth: 0 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: BrandTitle, tabBarIcon: tabIcon("home") }} />
+      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: () => <BrandTitle />, tabBarIcon: tabIcon("home") }} />
       <Tabs.Screen name="history" options={{ title: "History", tabBarIcon: tabIcon("history") }} />
       <Tabs.Screen name="accounts" options={{ title: "Accounts", tabBarIcon: tabIcon("wallet") }} />
       <Tabs.Screen name="categories" options={{ title: "Categories", tabBarIcon: tabIcon("tag") }} />
