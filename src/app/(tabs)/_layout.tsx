@@ -11,12 +11,14 @@ function tabIcon(name: IconName) {
   };
 }
 
-// Home's header carries the brand: logo plus app name, in the header's own text color.
-function BrandTitle({ tintColor }: { tintColor?: ColorValue }) {
+// Home's header carries the brand: logo plus app name. The navigator doesn't pass a title color here on native,
+// so the text takes the app's own theme color.
+function BrandTitle() {
+  const { text } = useColors();
   return (
     <View accessibilityRole="header" accessibilityLabel="Pocketeer" className="flex-row items-center gap-2">
       <Logo size={28} />
-      <Text style={{ fontFamily: "Poppins_600SemiBold", fontSize: 17, color: tintColor }}>Pocketeer</Text>
+      <Text style={{ fontFamily: "Poppins_600SemiBold", fontSize: 17, color: text }}>Pocketeer</Text>
     </View>
   );
 }
