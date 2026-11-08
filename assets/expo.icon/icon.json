@@ -1,40 +1,42 @@
 {
-  "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.47843,1.00000,1.00000"
-  },
-  "groups" : [
+  "fill-specializations": [
     {
-      "layers" : [
-        {
-          "image-name" : "expo-symbol 2.svg",
-          "name" : "expo-symbol 2",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              1.1008400065293245e-05,
-              -16.046875
-            ]
-          }
-        },
-        {
-          "image-name" : "grid.png",
-          "name" : "grid"
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "value": {
+        "solid": "srgb:0.06667,0.49804,0.55686,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.02745,0.23137,0.25882,1.00000"
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
-      "watchOS"
-    ],
-    "squares" : "shared"
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "pocket.svg",
+          "name": "pocket"
+        },
+        {
+          "glass": true,
+          "image-name": "coin.svg",
+          "name": "coin"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
   }
 }

@@ -1,8 +1,10 @@
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+import { Logo } from "@/components/logo";
 import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
 import { clearAllData, replaceAllData, saveTheme, type Theme } from "@/db/db";
@@ -154,6 +156,12 @@ export default function Settings() {
       )}
 
       <ErrorText>{problem}</ErrorText>
+
+      <View className="mt-6 items-center gap-2">
+        <Logo size={48} />
+        <Text className="font-semibold text-base text-ink dark:text-white">Pocketeer</Text>
+        <Muted>{`Version ${Constants.expoConfig?.version ?? "unknown"}`}</Muted>
+      </View>
     </ScrollView>
   );
 }

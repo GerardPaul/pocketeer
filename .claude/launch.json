@@ -4,8 +4,23 @@
     {
       "name": "web",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8082", "--clear"],
+      "runtimeArgs": [
+        "expo",
+        "start",
+        "--web",
+        "--port",
+        "8082",
+        "--clear"
+      ],
       "port": 8082
+    },
+    {
+      "name": "logo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/logo.mjs"
+      ],
+      "port": 8090
     }
   ]
 }

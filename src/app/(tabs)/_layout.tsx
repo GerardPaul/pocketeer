@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from "expo-router";
-import type { ColorValue } from "react-native";
+import { type ColorValue, Text, View } from "react-native";
 
+import { Logo } from "@/components/logo";
 import { Icon, type IconName, useColors } from "@/components/ui";
 import { useData } from "@/lib/use-data";
 
@@ -8,6 +9,16 @@ function tabIcon(name: IconName) {
   return function TabIcon({ color }: { color: ColorValue }) {
     return <Icon name={name} color={color} size={22} />;
   };
+}
+
+// Home's header carries the brand: logo plus app name, in the header's own text color.
+function BrandTitle({ tintColor }: { tintColor?: ColorValue }) {
+  return (
+    <View accessibilityRole="header" accessibilityLabel="Pocketeer" className="flex-row items-center gap-2">
+      <Logo size={28} />
+      <Text style={{ fontFamily: "Poppins_600SemiBold", fontSize: 17, color: tintColor }}>Pocketeer</Text>
+    </View>
+  );
 }
 
 export default function TabsLayout() {
@@ -27,7 +38,7 @@ export default function TabsLayout() {
         tabBarStyle: { borderTopWidth: 0 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: "Pocketeer", tabBarIcon: tabIcon("home") }} />
+      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: BrandTitle, tabBarIcon: tabIcon("home") }} />
       <Tabs.Screen name="history" options={{ title: "History", tabBarIcon: tabIcon("history") }} />
       <Tabs.Screen name="accounts" options={{ title: "Accounts", tabBarIcon: tabIcon("wallet") }} />
       <Tabs.Screen name="categories" options={{ title: "Categories", tabBarIcon: tabIcon("tag") }} />

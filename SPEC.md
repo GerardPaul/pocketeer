@@ -65,7 +65,7 @@ Examples:
 
 ## 3. MVP features
 
-0. **Welcome** — first screen on a fresh install (and after clearing data): app name, logo (placeholder for now), "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below. It has no on-screen Back; the system back gesture or button returns to the welcome screen.
+0. **Welcome** — first screen on a fresh install (and after clearing data): app logo and name, "Let’s get started" button, then the currency picker. The picker is a searchable grid: each tile shows the currency symbol with its name below. It has no on-screen Back; the system back gesture or button returns to the welcome screen.
    After the currency is picked, a five-step tutorial (accounts, budgets, logging, history, backups) runs once, with Skip and Next. Swiping left goes to the next step, swiping right to the previous one.
 1. **Accounts** — create, edit, delete (only if no transactions); regular (starting balance) or credit card (credit limit, starting owed, optional cutoff and due days). In the Accounts tab, tapping an account offers "View transactions" or "Edit account". An account's transactions screen lists everything it was used for, newest first, ten at a time with a "Load more" button, and can be limited to a date range.
 2. **Categories** — create, edit, delete (only if no transactions); set monthly budget; pick an icon (shown in the Categories tab, budget rows, expense rows in history and the category picker). The icon comes first in the form; picking one on a new category fills in a suggested name (e.g. coffee cup → "Coffee") unless the user has typed their own. Editing never renames.
@@ -111,6 +111,7 @@ Storage: `expo-sqlite` (local database on the device).
 | Theme | Light by default; Settings has a light/dark toggle, saved on the device (`settings` table, key `theme`). Palette in `src/lib/palette.js`: deep teal `#117F8E` (palette `#128494`, darkened for white-text contrast) and cyan `#00B7C2` main, green `#4EF037` accent, `#ECFEFF` background. Cyan and green always take dark ink text, never white |
 | Font | Poppins via `@expo-google-fonts/poppins`, loaded at runtime with `useFonts` (works in Expo Go) |
 | Icons | Material Symbols outlines drawn with `react-native-svg`, identical on iOS and Android. `scripts/icons.mjs` extracts the paths from the font that ships with `expo-symbols` into `src/components/icon-paths.ts`; rerun it after adding an icon |
+| App icon | Lime coin dropping into a stitched white pocket on teal (`assets/logo/pocketeer.svg`). `scripts/logo.mjs` holds the artwork and writes every version: the iOS 1024 icon without transparency, the iOS 26 Liquid Glass layers (`assets/expo.icon`, teal background, ink in dark mode), the Android adaptive foreground, background and monochrome images, the splash icon (teal splash background) and the favicon. Run `node scripts/logo.mjs` (or the `logo` preview config) and open http://localhost:8090 to render them. The artwork lives in `src/components/logo-art.ts`, which the in-app `Logo` also draws: welcome screen, Home header next to the name, and the Settings footer with the app version |
 | Currency formatting | `Intl.NumberFormat` (built in) |
 | Date picker | `@react-native-community/datetimepicker` |
 | Export | `expo-file-system` + `expo-sharing` |

@@ -2,7 +2,8 @@ import { Redirect, router } from "expo-router";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button, Icon } from "@/components/ui";
+import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui";
 import { HOME } from "@/lib/routes";
 import { useData } from "@/lib/use-data";
 
@@ -17,11 +18,7 @@ export default function Welcome() {
     <View className="flex-1 bg-canvas dark:bg-canvas-dark">
       <SafeAreaView style={{ flex: 1, padding: 24 }}>
         <View className="flex-1 items-center justify-center gap-5">
-          {/* Placeholder until the real logo is added. */}
-          <View className="h-28 w-28 items-center justify-center overflow-hidden rounded-[32px] bg-primary">
-            <View className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-accent" />
-            <Icon name="wallet" color="#FFFFFF" size={48} />
-          </View>
+          <Logo size={112} />
           <View className="items-center gap-1">
             <Text accessibilityRole="header" className="font-bold text-4xl text-ink dark:text-white">
               Pocketeer
