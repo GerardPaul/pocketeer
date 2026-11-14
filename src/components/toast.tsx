@@ -11,6 +11,10 @@ export const useToast = () => useContext(ToastContext);
 
 const useNativeDriver = Platform.OS !== "web";
 
+// The toast sits just above the tab bar, which is 49pt plus the bottom inset. It lives outside the tabs,
+// so it can't measure the bar; 56 leaves room for a slightly taller bar on Android.
+const TAB_BAR = 56;
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<string | null>(null);
   const [opacity] = useState(() => new Animated.Value(0));
@@ -41,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <Animated.View
           pointerEvents="none"
           accessibilityLiveRegion="polite"
-          style={{ opacity, position: "absolute", top: insets.top + 8, left: 16, right: 16, alignItems: "center" }}
+          style={{ opacity, position: "absolute", bottom: insets.bottom + TAB_BAR + 8, left: 16, right: 16, alignItems: "center" }}
         >
           <View className="flex-row items-center gap-2 rounded-full bg-primary px-5 py-3 shadow-lg">
             <Icon name="check" color="#FFFFFF" size={18} />
