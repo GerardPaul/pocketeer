@@ -62,6 +62,11 @@ export default function Home() {
   const backupDays = backupDueDays(data.lastBackup, data.transactions, today);
   // Only mention the last backup when the count actually starts there, not at data logged after it.
   const fromBackup = data.lastBackup !== null && daysBetween(data.lastBackup, today) === backupDays;
+  // Categories without a budget would only show spending; History's category chart covers that.
+  const budgeted = data.categories.flatMap((c) => {
+    const budget = budgetFor(c.id, month, data.budgets);
+    return budget === null ? [] : [{ ...c, budget }];
+  });
 
   let cash = 0;
   let owed = 0;
@@ -113,30 +118,33 @@ export default function Home() {
       </ScrollView>
 
       <Heading>{`Budgets · ${formatMonth(month)}`}</Heading>
-      {/* Only for the first category; after that, categories are managed from their tab. */}
-      {data.categories.length === 0 && (
+      {budgeted.length === 0 && (
         <View className="flex-row gap-3">
           <AddTile
             label="Add category"
             onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}
           />
           <View className="flex-1 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">
-            <Muted>No budgets yet. Tap + to add a category, like Food or Transport, and give it a monthly budget.</Muted>
+            <Muted>
+              {data.categories.length === 0
+                ? "No budgets yet. Tap + to add a category, like Food or Transport, and give it a monthly budget."
+                : "No budgets yet. Give a category a monthly budget in the Categories tab, or tap + to add one."}
+            </Muted>
           </View>
         </View>
       )}
       <BudgetGrid>
-        {data.categories.map((c) => (
+        {budgeted.map((c) => (
           <BudgetTile
             key={c.id}
             name={c.name}
             icon={c.icon}
             spent={spentFor(c.id, month, data.transactions)}
-            budget={budgetFor(c.id, month, data.budgets)}
+            budget={c.budget}
             currency={currency}
           />
         ))}
-        {data.categories.length > 0 && (
+        {budgeted.length > 0 && (
           <AddCategoryTile
             key="add"
             onPress={() => router.push({ pathname: "/category/[id]", params: { id: "new" } })}

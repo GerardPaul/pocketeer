@@ -128,11 +128,10 @@ export default function History() {
   // Totals follow the filters, so they always add up the list below.
   const { income, spent, net } = summarize(txs);
   const categories = categoryId === ALL ? data.categories : data.categories.filter((c) => c.id === categoryId);
-  // Skip categories that didn't exist yet and weren't used that month.
+  // Only categories with a budget that month; spending in the rest shows in the category chart.
   const tiles = categories.flatMap((c) => {
-    const spent = spentFor(c.id, month, data.transactions);
     const budget = budgetFor(c.id, month, data.budgets);
-    return budget === null && spent === 0 ? [] : [{ ...c, spent, budget }];
+    return budget === null ? [] : [{ ...c, spent: spentFor(c.id, month, data.transactions), budget }];
   });
 
   return (

@@ -2,7 +2,7 @@ import { useColorScheme } from "nativewind";
 import { Children, isValidElement, type ReactNode } from "react";
 import { type ColorValue, Pressable, Text, View } from "react-native";
 
-import { Icon, type IconName, Muted, useColors } from "@/components/ui";
+import { Icon, type IconName, useColors } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import palette from "@/lib/palette";
 
@@ -70,12 +70,12 @@ export function BudgetTile({
   name: string;
   icon: IconName;
   spent: number;
-  budget: number | null;
+  budget: number;
   currency: string;
 }) {
   const { tint } = useColors();
   const dark = useColorScheme().colorScheme === "dark";
-  const over = budget !== null && spent > budget;
+  const over = spent > budget;
   // The ring shows what's left, so it empties as the budget gets used.
   const left = budget ? Math.max(0, ((budget - spent) / budget) * 100) : 0;
   return (
@@ -97,12 +97,9 @@ export function BudgetTile({
           {name}
         </Text>
         <Text numberOfLines={1} className="font-regular text-xs text-muted dark:text-muted-dark">
-          {formatMoney(spent, currency)}
-          {budget !== null && ` of ${formatMoney(budget, currency)}`}
+          {`${formatMoney(spent, currency)} of ${formatMoney(budget, currency)}`}
         </Text>
-        {budget === null ? (
-          <Muted>No budget set</Muted>
-        ) : over ? (
+        {over ? (
           <Text numberOfLines={1} className="font-medium text-sm text-red-600 dark:text-red-400">
             Over by {formatMoney(spent - budget, currency)}
           </Text>
