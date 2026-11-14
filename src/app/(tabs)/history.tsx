@@ -383,9 +383,11 @@ export default function History() {
         ListHeaderComponent={header}
         renderSectionHeader={({ section }) => {
           const { net } = summarize(section.data);
+          // A day with one transaction would only repeat that row's amount.
+          const total = section.data.length > 1 && net !== 0 ? signed(net, currency) : undefined;
           return (
             <View className="bg-primary px-3">
-              <DayHeader date={section.date} total={net === 0 ? undefined : signed(net, currency)} />
+              <DayHeader date={section.date} total={total} />
             </View>
           );
         }}
