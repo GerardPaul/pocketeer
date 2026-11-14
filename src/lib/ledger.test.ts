@@ -7,6 +7,7 @@ import {
   cardCycle,
   daysBetween,
   deleteTransactionProblem,
+  groupByDay,
   isRealDate,
   matchesSearch,
   monthlyTotals,
@@ -305,5 +306,20 @@ describe("charts", () => {
       { month: "2027-01", income: 0, spent: 0 },
       { month: "2027-02", income: 0, spent: 300 },
     ]);
+  });
+});
+
+describe("groupByDay", () => {
+  it("groups same-day rows together and keeps the order", () => {
+    const rows = [
+      { id: 1, date: "2026-11-14" },
+      { id: 2, date: "2026-11-14" },
+      { id: 3, date: "2026-11-12" },
+    ];
+    expect(groupByDay(rows)).toEqual([
+      { date: "2026-11-14", data: [rows[0], rows[1]] },
+      { date: "2026-11-12", data: [rows[2]] },
+    ]);
+    expect(groupByDay([])).toEqual([]);
   });
 });

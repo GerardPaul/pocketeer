@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { Icon, type IconName, useColors } from "@/components/ui";
+import { Icon, type IconName, TextButton, useColors } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 
 // Charts are plain Views sized by percentage: no chart library, and they run in Expo Go.
+
+const TOP = 5;
 
 // Horizontal bars, biggest first, each as a share of the total.
 export function CategoryBars({
@@ -14,11 +17,14 @@ export function CategoryBars({
   currency: string;
 }) {
   const { tint } = useColors();
+  const [showAll, setShowAll] = useState(false);
   const total = rows.reduce((sum, r) => sum + r.amount, 0);
   const max = rows[0]?.amount ?? 0;
+  // The biggest few tell the story; the rest are a tap away.
+  const shown = showAll ? rows : rows.slice(0, TOP);
   return (
     <View className="gap-3 rounded-3xl bg-surface p-4 dark:bg-surface-dark">
-      {rows.map((r) => {
+      {shown.map((r) => {
         const share = Math.round((r.amount / total) * 100);
         return (
           <View
@@ -44,6 +50,14 @@ export function CategoryBars({
           </View>
         );
       })}
+      {rows.length > TOP && (
+        <View className="items-center">
+          <TextButton
+            title={showAll ? "Show less" : `Show all (${rows.length})`}
+            onPress={() => setShowAll(!showAll)}
+          />
+        </View>
+      )}
     </View>
   );
 }

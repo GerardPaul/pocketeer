@@ -190,6 +190,25 @@ export function formatMonth(month: string): string {
   return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1));
 }
 
+// "Sat, Nov 14" for a YYYY-MM-DD day.
+export function formatDay(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(
+    new Date(y, m - 1, d),
+  );
+}
+
+// Splits a date-sorted list into one group per day, keeping the order.
+export function groupByDay<T extends { date: string }>(txs: readonly T[]): { date: string; data: T[] }[] {
+  const groups: { date: string; data: T[] }[] = [];
+  for (const t of txs) {
+    const last = groups.at(-1);
+    if (last?.date === t.date) last.data.push(t);
+    else groups.push({ date: t.date, data: [t] });
+  }
+  return groups;
+}
+
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);

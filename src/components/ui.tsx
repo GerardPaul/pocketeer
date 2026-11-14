@@ -267,17 +267,21 @@ export function Segmented<T extends string>({
   options,
   value,
   onChange,
+  hideLabel = false,
 }: {
   label: string;
   options: readonly { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  // For switches whose options explain themselves; screen readers still hear the label.
+  hideLabel?: boolean;
 }) {
   return (
     <View className="gap-1.5">
-      <Label>{label}</Label>
+      {!hideLabel && <Label>{label}</Label>}
       <View
         accessibilityRole="radiogroup"
+        accessibilityLabel={label}
         className="flex-row gap-1 rounded-2xl border border-line bg-surface p-1 dark:border-line-dark dark:bg-surface-dark"
       >
         {options.map((o) => {
