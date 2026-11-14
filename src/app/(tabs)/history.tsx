@@ -259,6 +259,8 @@ export default function History() {
 
       {showList ? (
         <>
+          {/* Same spot as on Insights. Totals follow the filters and search, so they always add up the list below. */}
+          <Totals txs={txs} currency={currency} />
           <View className="flex-row items-center gap-2">
             <Pressable
               accessibilityRole="button"
@@ -306,8 +308,6 @@ export default function History() {
               )}
             </View>
           )}
-          {/* Totals follow the filters and search, so they always add up the list below. */}
-          <Totals txs={txs} currency={currency} />
           <View className="mt-3 rounded-t-3xl bg-primary px-5 pt-4">
             <Text accessibilityRole="header" className="font-semibold text-lg text-white">
               Transactions
