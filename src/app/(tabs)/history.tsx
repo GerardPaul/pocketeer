@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, SectionList, Text, View } from "react-native";
+import { PanResponder, Pressable, SectionList, Text, View } from "react-native";
 
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { CategoryBars, MonthBars } from "@/components/charts";
@@ -160,6 +160,22 @@ export default function History() {
   const [categoryId, setCategoryId] = useState(ALL);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Swipe left for the next month, right for the previous one, like the tutorial's pages.
+  // Mostly-horizontal drags only, so vertical scrolling and taps work as before.
+  const [swipe] = useState(() =>
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) < 50) return;
+        // Read now: PanResponder reuses `g`, and it's reset by the time React runs the update below.
+        const by = g.dx < 0 ? 1 : -1;        // Same limit as the Next button: nothing can be logged in the future.
+        setMonth((m) => {
+          const next = shiftMonth(m, by);
+          return next > currentMonth() ? m : next;
+        });
+      },
+    }),
+  );
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
 
@@ -305,46 +321,49 @@ export default function History() {
   );
 
   // The list draws only the rows on screen, so a whole year of search results stays quick.
+  // Search covers every month, so swiping months is off while it's open.
   return (
-    <SectionList
-      className="flex-1 bg-canvas dark:bg-canvas-dark"
-      contentContainerClassName="p-4 pb-8"
-      keyboardShouldPersistTaps="handled"
-      stickySectionHeadersEnabled={false}
-      sections={showList ? groupByDay(txs) : []}
-      keyExtractor={(t) => String(t.id)}
-      ListHeaderComponent={header}
-      renderSectionHeader={({ section }) => {
-        const { net } = summarize(section.data);
-        return (
-          <View
-            accessible
-            accessibilityRole="header"
-            className="flex-row items-center justify-between bg-primary px-5 pb-1 pt-3"
-          >
-            <Text className="font-semibold text-sm text-white">{formatDay(section.date)}</Text>
-            {net !== 0 && <Text className="font-medium text-sm text-white">{signed(net, currency)}</Text>}
+    <View className="flex-1" {...(searchOpen ? {} : swipe.panHandlers)}>
+      <SectionList
+        className="flex-1 bg-canvas dark:bg-canvas-dark"
+        contentContainerClassName="p-4 pb-8"
+        keyboardShouldPersistTaps="handled"
+        stickySectionHeadersEnabled={false}
+        sections={showList ? groupByDay(txs) : []}
+        keyExtractor={(t) => String(t.id)}
+        ListHeaderComponent={header}
+        renderSectionHeader={({ section }) => {
+          const { net } = summarize(section.data);
+          return (
+            <View
+              accessible
+              accessibilityRole="header"
+              className="flex-row items-center justify-between bg-primary px-5 pb-1 pt-3"
+            >
+              <Text className="font-semibold text-sm text-white">{formatDay(section.date)}</Text>
+              {net !== 0 && <Text className="font-medium text-sm text-white">{signed(net, currency)}</Text>}
+            </View>
+          );
+        }}
+        renderItem={({ item }) => (
+          <View className="bg-primary px-3">
+            <TransactionRow
+              transaction={item}
+              data={data}
+              currency={currency}
+              accountId={accountId === ALL ? undefined : accountId}
+              showDate={false}
+            />
           </View>
-        );
-      }}
-      renderItem={({ item }) => (
-        <View className="bg-primary px-3">
-          <TransactionRow
-            transaction={item}
-            data={data}
-            currency={currency}
-            accountId={accountId === ALL ? undefined : accountId}
-            showDate={false}
-          />
-        </View>
-      )}
-      ListFooterComponent={
-        showList ? (
-          <View className="rounded-b-3xl bg-primary px-5 pb-4 pt-1">
-            {txs.length === 0 && <Text className="pb-1 font-regular text-sm text-white">{empty}</Text>}
-          </View>
-        ) : null
-      }
-    />
+        )}
+        ListFooterComponent={
+          showList ? (
+            <View className="rounded-b-3xl bg-primary px-5 pb-4 pt-1">
+              {txs.length === 0 && <Text className="pb-1 font-regular text-sm text-white">{empty}</Text>}
+            </View>
+          ) : null
+        }
+      />
+    </View>
   );
 }
