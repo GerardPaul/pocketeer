@@ -55,3 +55,49 @@ export function DateField({
     </View>
   );
 }
+
+// "20:00" ↔ a Date today at that time, and shown in the phone's own format (8:00 PM or 20:00).
+function timeToDate(value: string): Date {
+  const [h, m] = value.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+const toTime = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+const formatTime = (value: string) =>
+  new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(timeToDate(value));
+
+export function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const date = timeToDate(value);
+  return (
+    <View className="gap-1.5">
+      <Text className="font-medium text-sm text-muted dark:text-muted-dark">{label}</Text>
+      {Platform.OS === "ios" ? (
+        <View className="items-start">
+          <DateTimePicker
+            accessibilityLabel={label}
+            value={date}
+            mode="time"
+            display="compact"
+            onChange={(_, d) => d && onChange(toTime(d))}
+          />
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${formatTime(value)}`}
+          onPress={() =>
+            DateTimePickerAndroid.open({
+              value: date,
+              mode: "time",
+              onChange: (e, d) => e.type === "set" && d && onChange(toTime(d)),
+            })
+          }
+          className="rounded-2xl border border-line bg-surface px-4 py-3.5 dark:border-line-dark dark:bg-surface-dark"
+        >
+          <Text className="font-regular text-base text-ink dark:text-white">{formatTime(value)}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}

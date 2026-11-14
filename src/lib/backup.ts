@@ -9,12 +9,12 @@ import {
   validateAccount,
 } from "@/lib/ledger";
 import { toCategoryIcon } from "@/lib/category-icons";
-import { isValidCurrency } from "@/lib/money";
+import { currencyDigits, isValidCurrency } from "@/lib/money";
 
 const APP = "pocketeer";
 const VERSION = 1;
 
-export type Backup = Required<{ [K in Exclude<keyof Data, "lastBackup">]: NonNullable<Data[K]> }>;
+export type Backup = Required<{ [K in Exclude<keyof Data, "lastBackup" | "reminders">]: NonNullable<Data[K]> }>;
 
 export function toBackupJson(data: Backup, exportedAt: Date): string {
   return JSON.stringify(
@@ -22,6 +22,44 @@ export function toBackupJson(data: Backup, exportedAt: Date): string {
     null,
     2,
   );
+}
+
+const TYPE_LABEL = { expense: "Expense", income: "Income", transfer: "Transfer" } as const;
+
+// Quotes a cell only when it needs it. A cell starting with = + - @ or a tab could run as a formula when the file
+// is opened in a spreadsheet, so it gets a leading apostrophe and stays plain text.
+function csvCell(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+// Minor units to a plain decimal ("123450" → "1234.50"), with no grouping so spreadsheets read it as a number.
+function csvAmount(minor: number, currency: string): string {
+  const digits = currencyDigits(currency);
+  if (digits === 0) return String(minor);
+  const s = String(minor).padStart(digits + 1, "0");
+  return `${s.slice(0, -digits)}.${s.slice(-digits)}`;
+}
+
+// Every transaction as a spreadsheet, newest first like the lists. For reading in Excel, Google Sheets or Numbers;
+// it can't be imported back, the JSON backup is for that.
+export function toTransactionsCsv(data: Pick<Backup, "currency" | "accounts" | "categories" | "transactions">): string {
+  const accounts = new Map(data.accounts.map((a) => [a.id, a.name]));
+  const categories = new Map(data.categories.map((c) => [c.id, c.name]));
+  const rows = [
+    ["Date", "Type", `Amount (${data.currency})`, "Account", "To account", "Category", "Note"],
+    ...data.transactions.map((t) => [
+      t.date,
+      TYPE_LABEL[t.type],
+      csvAmount(t.amount, data.currency),
+      accounts.get(t.account_id) ?? "",
+      t.to_account_id === null ? "" : (accounts.get(t.to_account_id) ?? ""),
+      t.category_id === null ? "" : (categories.get(t.category_id) ?? ""),
+      t.note,
+    ]),
+  ];
+  // The byte order mark tells Excel the file is UTF-8, so the ₱ sign and accented names come through.
+  return `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }
 
 type Result = { ok: true; backup: Backup } | { ok: false; error: string };

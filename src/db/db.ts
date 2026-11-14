@@ -65,10 +65,15 @@ export async function migrate(db: SQLiteDatabase) {
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
+// Card due-date reminders on or off, and the daily nudge's time ("HH:MM") or null when it's off.
+export type Reminders = { due: boolean; daily: string | null };
+
 export type Data = {
   currency: string | null;
   // Date of the last export from this phone (YYYY-MM-DD); a phone setting, so it isn't part of the backup file.
   lastBackup: string | null;
+  // Phone settings too, like the theme: they survive clearing and importing and aren't in the backup file.
+  reminders: Reminders;
   accounts: Account[];
   categories: Category[];
   budgets: CategoryBudget[];
@@ -185,6 +190,14 @@ export async function saveAppLock(db: SQLiteDatabase, on: boolean) {
   );
 }
 
+export async function saveReminders(db: SQLiteDatabase, r: Reminders) {
+  await db.withTransactionAsync(async () => {
+    const upsert = "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value";
+    await db.runAsync(upsert, "reminder_due", r.due ? "on" : "off");
+    await db.runAsync(upsert, "reminder_daily", r.daily ?? "off");
+  });
+}
+
 export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   await db.runAsync(
     "INSERT INTO settings (key, value) VALUES ('last_backup', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -192,13 +205,13 @@ export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   );
 }
 
-// The theme and app lock are phone preferences, not data, so they survive clearing and importing.
+// The theme, app lock and reminders are phone preferences, not data, so they survive clearing and importing.
 const DELETE_ALL = `
   DELETE FROM transactions;
   DELETE FROM category_budgets;
   DELETE FROM categories;
   DELETE FROM accounts;
-  DELETE FROM settings WHERE key NOT IN ('theme', 'app_lock');
+  DELETE FROM settings WHERE key NOT IN ('theme', 'app_lock', 'reminder_due', 'reminder_daily');
 `;
 
 // Removes everything, currency included, so the app starts over at the welcome screen.
@@ -209,7 +222,7 @@ export async function clearAllData(db: SQLiteDatabase) {
 // Replaces everything in one transaction, so a failed import leaves the old data untouched.
 export async function replaceAllData(
   db: SQLiteDatabase,
-  data: Omit<Data, "currency" | "lastBackup"> & { currency: string },
+  data: Omit<Data, "currency" | "lastBackup" | "reminders"> & { currency: string },
 ) {
   await db.withTransactionAsync(async () => {
     await db.execAsync(DELETE_ALL);
@@ -242,9 +255,11 @@ export async function replaceAllData(
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
-  const [setting, backup, accounts, categories, budgets, transactions] = await Promise.all([
+  const [setting, backup, due, daily, accounts, categories, budgets, transactions] = await Promise.all([
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'currency'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'last_backup'"),
+    db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_due'"),
+    db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_daily'"),
     db.getAllAsync<Account>("SELECT * FROM accounts ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<Category>("SELECT * FROM categories ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
@@ -253,6 +268,11 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
   return {
     currency: setting?.value ?? null,
     lastBackup: backup?.value ?? null,
+    // Both start off; a stored time that isn't HH:MM counts as off.
+    reminders: {
+      due: due?.value === "on",
+      daily: daily && /^\d{2}:\d{2}$/.test(daily.value) ? daily.value : null,
+    },
     accounts,
     // The column is plain text, so an unknown name falls back instead of breaking the icon lookup.
     categories: categories.map((c) => ({ ...c, icon: toCategoryIcon(c.icon) })),

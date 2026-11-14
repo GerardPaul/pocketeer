@@ -29,3 +29,20 @@ export function DateField({
     />
   );
 }
+
+// Reminders don't run on web, so this only has to exist for the shared Settings screen to load.
+export function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [text, setText] = useState(value);
+  return (
+    <Field
+      label={label}
+      value={text}
+      placeholder="HH:MM"
+      maxLength={5}
+      onChangeText={(t) => {
+        setText(t);
+        if (/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) onChange(t);
+      }}
+    />
+  );
+}

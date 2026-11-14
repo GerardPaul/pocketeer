@@ -8,6 +8,7 @@ import {
   cardCycle,
   daysBetween,
   deleteTransactionProblem,
+  dueReminders,
   groupByDay,
   isRealDate,
   matchesSearch,
@@ -341,5 +342,27 @@ describe("budgetWarning", () => {
 
   it("treats any spending against a zero budget as over", () => {
     expect(budgetWarning(0, 100, 0)).toBe("over");
+  });
+});
+
+describe("dueReminders", () => {
+  const owed = [tx({ type: "expense", amount: 500, account_id: 3, category_id: 1 })];
+
+  it("reminds 3 days before each of the next 3 due dates, across the year end", () => {
+    expect(dueReminders(accounts, owed, "2026-11-15").map(({ due, remindOn }) => [due, remindOn])).toEqual([
+      ["2026-11-25", "2026-11-22"],
+      ["2026-12-25", "2026-12-22"],
+      ["2027-01-25", "2027-01-22"],
+    ]);
+  });
+
+  it("skips a reminder whose day has passed but keeps it on the day itself", () => {
+    expect(dueReminders(accounts, owed, "2026-11-23").map((r) => r.due)).toEqual(["2026-12-25", "2027-01-25"]);
+    expect(dueReminders(accounts, owed, "2026-11-22").map((r) => r.due)[0]).toBe("2026-11-25");
+  });
+
+  it("leaves out paid-off cards, cards without a due day and regular accounts", () => {
+    expect(dueReminders(accounts, [], "2026-11-15")).toEqual([]);
+    expect(dueReminders([{ ...visa, due_day: null }, cash], owed, "2026-11-15")).toEqual([]);
   });
 });

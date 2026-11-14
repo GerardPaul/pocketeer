@@ -298,6 +298,30 @@ export function nextDueDate(account: Account, today: string): { date: string; da
   return { date, days: daysBetween(today, date) };
 }
 
+// Payment reminders for each credit card with a due day and money owed: the next `count` due dates, each reminded
+// `before` days ahead. Reminders that would fall before today are left out.
+export function dueReminders(
+  accounts: readonly Account[],
+  txs: readonly Transaction[],
+  today: string,
+  before = 3,
+  count = 3,
+): { account: Account; due: string; remindOn: string }[] {
+  const out: { account: Account; due: string; remindOn: string }[] = [];
+  for (const account of accounts) {
+    if (accountAmount(account, txs) <= 0) continue;
+    let from = today;
+    for (let i = 0; i < count; i++) {
+      const next = nextDueDate(account, from);
+      if (!next) break;
+      const remindOn = addDays(next.date, -before);
+      if (remindOn >= today) out.push({ account, due: next.date, remindOn });
+      from = addDays(next.date, 1);
+    }
+  }
+  return out;
+}
+
 // Search words each have to match the note, a category or account name, or the amount ("1250", "1,250.50").
 // `names` maps account and category ids to names; amounts compare as plain digits so grouping marks don't matter.
 export function matchesSearch(

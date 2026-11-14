@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useEffect } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
@@ -15,6 +16,7 @@ import {
   toDateString,
 } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
+import { scheduleReminders } from "@/lib/reminders";
 import { useData } from "@/lib/use-data";
 
 // Square "+" tile that leads a row of cards, used for adding accounts and the first category.
@@ -55,6 +57,12 @@ function BackupReminder({ days, backedUp }: { days: number; backedUp: boolean })
 
 export default function Home() {
   const { data, error } = useData();
+  // Home loads on every launch and after each edit elsewhere, so this keeps reminders in step with the data:
+  // a paid-off card stops reminding and a new due date gets one.
+  useEffect(() => {
+    if (!data?.currency) return;
+    scheduleReminders(data).catch((e: unknown) => console.warn(`Couldn't schedule reminders: ${String(e)}`));
+  }, [data]);
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
   const month = currentMonth();

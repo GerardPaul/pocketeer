@@ -1,4 +1,4 @@
-import { type Backup, parseBackup, toBackupJson } from "./backup";
+import { type Backup, parseBackup, toBackupJson, toTransactionsCsv } from "./backup";
 
 const sample: Backup = {
   currency: "PHP",
@@ -68,4 +68,41 @@ test("rejects backups that break balance rules", () => {
   const b = json();
   b.transactions[0].amount = 999999;
   expect(parse(b)).toMatchObject({ ok: false, error: /balance rule.*below 0/ });
+});
+
+describe("toTransactionsCsv", () => {
+  const lines = (csv: string) => csv.replace(/^﻿/, "").split("\r\n");
+
+  it("writes a header and one row per transaction with names and plain decimal amounts", () => {
+    const csv = toTransactionsCsv(sample);
+    expect(csv.startsWith("﻿")).toBe(true);
+    expect(lines(csv)).toEqual([
+      "Date,Type,Amount (PHP),Account,To account,Category,Note",
+      "2026-10-31,Expense,300.00,Cash,,Food,Lunch",
+      "2026-10-31,Expense,2000.00,Visa,,Food,",
+      "2026-10-31,Transfer,500.00,Cash,Visa,,",
+      "",
+    ]);
+  });
+
+  it("quotes commas, quotes and line breaks, and defuses spreadsheet formulas", () => {
+    const tricky = {
+      ...sample,
+      transactions: [
+        { ...sample.transactions[0], note: 'Dinner, "the good one"\nwith friends' },
+        { ...sample.transactions[0], id: 9, note: "=HYPERLINK(\"x\")" },
+        { ...sample.transactions[0], id: 10, note: "-5 refund" },
+      ],
+    };
+    // Rows end in \r\n, so the note's own line break stays inside its quoted cell.
+    const [, a, b, c] = lines(toTransactionsCsv(tricky));
+    expect(a).toBe('2026-10-31,Expense,300.00,Cash,,Food,"Dinner, ""the good one""\nwith friends"');
+    expect(b).toBe(`2026-10-31,Expense,300.00,Cash,,Food,"'=HYPERLINK(""x"")"`);
+    expect(c).toBe("2026-10-31,Expense,300.00,Cash,,Food,'-5 refund");
+  });
+
+  it("writes whole numbers for currencies without minor units", () => {
+    const yen = { ...sample, currency: "JPY", transactions: [{ ...sample.transactions[0], amount: 1500 }] };
+    expect(lines(toTransactionsCsv(yen))[1]).toBe("2026-10-31,Expense,1500,Cash,,Food,Lunch");
+  });
 });

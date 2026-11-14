@@ -1,8 +1,10 @@
 import * as DocumentPicker from "expo-document-picker";
 
+const MIME_TYPES = { backup: "application/json", csv: "text/csv" } as const;
+
 // Web can't share local files, so download instead. Web is only used for local testing.
-export async function shareBackupFile(name: string, json: string) {
-  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+export async function shareFile(name: string, text: string, kind: keyof typeof MIME_TYPES) {
+  const url = URL.createObjectURL(new Blob([text], { type: MIME_TYPES[kind] }));
   const a = document.createElement("a");
   a.href = url;
   a.download = name;

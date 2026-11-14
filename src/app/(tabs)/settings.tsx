@@ -5,16 +5,32 @@ import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { APP_LOCK_SUPPORTED, useAppLock } from "@/components/app-lock";
+import { TimeField } from "@/components/date-field";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
-import { clearAllData, replaceAllData, saveLastBackup, saveTheme, type Theme } from "@/db/db";
-import { type Backup, parseBackup, toBackupJson } from "@/lib/backup";
-import { pickBackupFile, shareBackupFile } from "@/lib/backup-file";
+import {
+  type Reminders,
+  type Theme,
+  clearAllData,
+  replaceAllData,
+  saveLastBackup,
+  saveReminders,
+  saveTheme,
+} from "@/db/db";
+import { type Backup, parseBackup, toBackupJson, toTransactionsCsv } from "@/lib/backup";
+import { pickBackupFile, shareFile } from "@/lib/backup-file";
 import { toDateString } from "@/lib/ledger";
+import { REMINDERS_SUPPORTED, allowReminders, scheduleReminders } from "@/lib/reminders";
 import { useData } from "@/lib/use-data";
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+const ON_OFF = [
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" },
+] as const;
+const DEFAULT_DAILY = "20:00";
 
 export default function Settings() {
   const { db, data, error, reload } = useData();
@@ -27,7 +43,8 @@ export default function Settings() {
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { currency, lastBackup, accounts, categories, budgets, transactions } = data;
+  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions } = data;
+  const cardsWithDueDay = accounts.some((a) => a.type === "credit_card" && a.due_day !== null);
 
   async function changeTheme(theme: Theme) {
     colorScheme.set(theme);
@@ -45,13 +62,30 @@ export default function Settings() {
     else toast(on ? "App lock on" : "App lock off");
   }
 
+  async function changeReminders(next: Reminders) {
+    setProblem(null);
+    try {
+      const turningOn = (next.due && !reminders.due) || (next.daily !== null && reminders.daily === null);
+      if (turningOn && !(await allowReminders())) {
+        return setProblem("Notifications are off for Pocketeer. Turn them on in your phone’s settings to get reminders.");
+      }
+      await saveReminders(db, next);
+      await scheduleReminders({ currency, lastBackup, reminders: next, accounts, categories, budgets, transactions });
+      reload();
+      if (turningOn) toast("Reminder on");
+    } catch (e) {
+      setProblem(`Couldn't change reminders: ${String(e)}`);
+    }
+  }
+
   async function exportData() {
     setProblem(null);
     try {
       const now = new Date();
-      await shareBackupFile(
+      await shareFile(
         `pocketeer-backup-${toDateString(now)}.json`,
         toBackupJson({ currency, accounts, categories, budgets, transactions }, now),
+        "backup",
       );
       // ponytail: the share sheet doesn't say whether the file was actually saved, so any completed export counts.
       await saveLastBackup(db, toDateString(now));
@@ -59,6 +93,18 @@ export default function Settings() {
       toast("Backup created");
     } catch (e) {
       setProblem(`Export failed: ${String(e)}`);
+    }
+  }
+
+  // A spreadsheet copy for reading, not a backup, so it doesn't reset the backup reminder.
+  async function exportCsv() {
+    setProblem(null);
+    try {
+      const csv = toTransactionsCsv({ currency, accounts, categories, transactions });
+      await shareFile(`pocketeer-transactions-${toDateString(new Date())}.csv`, csv, "csv");
+      toast("Spreadsheet created");
+    } catch (e) {
+      setProblem(`CSV export failed: ${String(e)}`);
     }
   }
 
@@ -129,14 +175,41 @@ export default function Settings() {
           <Heading>Security</Heading>
           <Segmented
             label="Lock with Face ID, fingerprint or passcode"
-            options={[
-              { value: "off", label: "Off" },
-              { value: "on", label: "On" },
-            ]}
+            options={ON_OFF}
             value={lock.enabled ? "on" : "off"}
             onChange={(v) => changeLock(v === "on")}
           />
           <Muted>Asks when the app opens and when you come back after 30 seconds away.</Muted>
+        </>
+      )}
+
+      {REMINDERS_SUPPORTED && (
+        <>
+          <Heading>Reminders</Heading>
+          <Segmented
+            label="Card payment due dates"
+            options={ON_OFF}
+            value={reminders.due ? "on" : "off"}
+            onChange={(v) => changeReminders({ ...reminders, due: v === "on" })}
+          />
+          <Muted>
+            {cardsWithDueDay
+              ? "At 9 AM, 3 days before a card’s due date, while it has a balance."
+              : "Add a due date to a credit card to get these. At 9 AM, 3 days before it’s due."}
+          </Muted>
+          <Segmented
+            label="Daily reminder to log spending"
+            options={ON_OFF}
+            value={reminders.daily ? "on" : "off"}
+            onChange={(v) => changeReminders({ ...reminders, daily: v === "on" ? DEFAULT_DAILY : null })}
+          />
+          {reminders.daily && (
+            <TimeField
+              label="Remind me at"
+              value={reminders.daily}
+              onChange={(daily) => changeReminders({ ...reminders, daily })}
+            />
+          )}
         </>
       )}
 
@@ -160,6 +233,19 @@ export default function Settings() {
       ) : (
         <Button title="Import data" icon="download" variant="secondary" onPress={chooseFile} />
       )}
+
+      <Heading>Spreadsheet</Heading>
+      <Muted>
+        Every transaction as a CSV file for Excel, Google Sheets or Numbers. It can’t be imported back, so use Export
+        data for backups.
+      </Muted>
+      <Button
+        title="Export CSV"
+        icon="list"
+        variant="secondary"
+        onPress={exportCsv}
+        disabled={transactions.length === 0}
+      />
 
       <Heading>Clear data</Heading>
       <Muted>Deletes every account, category, budget and transaction, and resets the currency.</Muted>
