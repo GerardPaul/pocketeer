@@ -73,21 +73,25 @@ function Totals({ txs, currency }: { txs: readonly Transaction[]; currency: stri
     ["Spent", formatMoney(spent, currency)],
     ["Net", signed(net, currency)],
   ];
+  // The heading makes clear these are the whole month's numbers, not what the filters picked out.
   return (
-    <View
-      accessible
-      accessibilityLabel={`Income ${formatMoney(income, currency)}, spent ${formatMoney(spent, currency)}, net ${net < 0 ? "minus " : ""}${formatMoney(Math.abs(net), currency)}`}
-      className="flex-row gap-3 rounded-3xl bg-surface p-4 dark:bg-surface-dark"
-    >
-      {items.map(([label, value]) => (
-        <View key={label} className="flex-1 gap-0.5">
-          <Text className="font-regular text-xs text-muted dark:text-muted-dark">{label}</Text>
-          <Text numberOfLines={1} adjustsFontSizeToFit className="font-semibold text-base text-ink dark:text-white">
-            {value}
-          </Text>
-        </View>
-      ))}
-    </View>
+    <>
+      <Heading>Month summary</Heading>
+      <View
+        accessible
+        accessibilityLabel={`Income ${formatMoney(income, currency)}, spent ${formatMoney(spent, currency)}, net ${net < 0 ? "minus " : ""}${formatMoney(Math.abs(net), currency)}`}
+        className="flex-row gap-3 rounded-3xl bg-surface p-4 dark:bg-surface-dark"
+      >
+        {items.map(([label, value]) => (
+          <View key={label} className="flex-1 gap-0.5">
+            <Text className="font-regular text-xs text-muted dark:text-muted-dark">{label}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit className="font-semibold text-base text-ink dark:text-white">
+              {value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </>
   );
 }
 
@@ -106,7 +110,6 @@ function Insights({ data, month, setMonth }: { data: Data; month: string; setMon
   const trend = monthlyTotals(data.transactions, month, 6);
   return (
     <>
-      <Totals txs={monthTxs} currency={currency} />
       {tiles.length > 0 && (
         <>
           <Heading>Budgets</Heading>
@@ -227,6 +230,21 @@ export default function History() {
       (categoryId === ALL || t.category_id === categoryId) &&
       (searching ? matchesSearch(t, query, names, digits) : t.date.startsWith(month)),
   );
+  // The summary card is always the whole month, like on Insights. What the filters or search pick out gets its
+  // own line above the list, so both numbers stay visible.
+  const monthTxs = data.transactions.filter((t) => t.date.startsWith(month));
+  const picked = summarize(txs);
+  const moved = txs.reduce((sum, t) => (t.type === "transfer" ? sum + t.amount : sum), 0);
+  const pickedLine = [
+    searching
+      ? `${txs.length} ${txs.length === 1 ? "match" : "matches"} in all months`
+      : `${txs.length} ${txs.length === 1 ? "transaction" : "transactions"}`,
+    picked.spent > 0 && `spent ${formatMoney(picked.spent, currency)}`,
+    picked.income > 0 && `income ${formatMoney(picked.income, currency)}`,
+    moved > 0 && `moved ${formatMoney(moved, currency)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const empty = searching
     ? "Nothing matches this search."
     : activeFilters
@@ -252,7 +270,6 @@ export default function History() {
             </View>
             <TextButton title="Cancel" onPress={closeSearch} />
           </View>
-          {searching && <Muted>{`${txs.length} ${txs.length === 1 ? "match" : "matches"} in all months`}</Muted>}
         </>
       ) : (
         <>
@@ -269,14 +286,14 @@ export default function History() {
               onPress={() => setMonth(shiftMonth(month, 1))}
             />
           </View>
+          {/* The whole month, whichever view is shown, so it sits above the switch. */}
+          <Totals txs={monthTxs} currency={currency} />
           <Segmented label="View" hideLabel options={VIEWS} value={view} onChange={setView} />
         </>
       )}
 
       {showList ? (
         <>
-          {/* Same spot as on Insights. Totals follow the filters and search, so they always add up the list below. */}
-          <Totals txs={txs} currency={currency} />
           <View className="flex-row items-center gap-2">
             <Pressable
               accessibilityRole="button"
@@ -324,6 +341,21 @@ export default function History() {
               )}
             </View>
           )}
+          {(searching || activeFilters > 0) && (
+            <View
+              accessible
+              accessibilityLabel={`${searching ? "Search" : "Filtered"} total: ${pickedLine}`}
+              className="flex-row items-center gap-3 rounded-2xl bg-sea/10 px-4 py-3 dark:bg-white/10"
+            >
+              <Icon name={searching ? "search" : "filter"} color={tint} size={20} />
+              <View className="flex-1 gap-0.5">
+                <Text className="font-regular text-xs text-muted dark:text-muted-dark">
+                  {searching ? "Search total" : "Filtered total"}
+                </Text>
+                <Text className="font-semibold text-base text-ink dark:text-white">{pickedLine}</Text>
+              </View>
+            </View>
+          )}
           <View className="mt-3 rounded-t-3xl bg-primary px-5 pt-4">
             <Text accessibilityRole="header" className="font-semibold text-lg text-white">
               Transactions
@@ -339,10 +371,11 @@ export default function History() {
   // The list draws only the rows on screen, so a whole year of search results stays quick.
   // Search covers every month, so swiping months is off while it's open.
   return (
-    <View className="flex-1" {...(searchOpen ? {} : swipe.panHandlers)}>
+    <View className="flex-1 bg-canvas dark:bg-canvas-dark" {...(searchOpen ? {} : swipe.panHandlers)}>
+      {/* NativeWind doesn't style SectionList's className props, so the padding is a plain style. */}
       <SectionList
-        className="flex-1 bg-canvas dark:bg-canvas-dark"
-        contentContainerClassName="p-4 pb-8"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         keyboardShouldPersistTaps="handled"
         stickySectionHeadersEnabled={false}
         sections={showList ? groupByDay(txs) : []}
