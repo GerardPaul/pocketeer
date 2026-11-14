@@ -142,6 +142,10 @@ export default function Home() {
             spent={spentFor(c.id, month, data.transactions)}
             budget={c.budget}
             currency={currency}
+            // `at` makes each tap a new request, so tapping the same budget again re-applies the filter.
+            onPress={() =>
+              router.navigate({ pathname: "/history", params: { category: c.id, at: Date.now() } })
+            }
           />
         ))}
         {budgeted.length > 0 && (

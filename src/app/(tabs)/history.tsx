@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { PanResponder, Pressable, SectionList, Text, View } from "react-native";
 
@@ -167,7 +168,8 @@ export default function History() {
       onPanResponderRelease: (_, g) => {
         if (Math.abs(g.dx) < 50) return;
         // Read now: PanResponder reuses `g`, and it's reset by the time React runs the update below.
-        const by = g.dx < 0 ? 1 : -1;        // Same limit as the Next button: nothing can be logged in the future.
+        const by = g.dx < 0 ? 1 : -1;
+        // Same limit as the Next button: nothing can be logged in the future.
         setMonth((m) => {
           const next = shiftMonth(m, by);
           return next > currentMonth() ? m : next;
@@ -175,6 +177,21 @@ export default function History() {
       },
     }),
   );
+  // A budget tapped on Home opens this month's transactions for that category. History is a tab and keeps
+  // its state, so each new request (a new `at`) resets the view once, during render rather than in an effect.
+  const params = useLocalSearchParams<{ category?: string; at?: string }>();
+  const request = params.category && params.at ? `${params.category}:${params.at}` : null;
+  const [handled, setHandled] = useState<string | null>(null);
+  if (request !== null && request !== handled) {
+    setHandled(request);
+    setMonth(currentMonth());
+    setView("transactions");
+    setType("all");
+    setAccountId(ALL);
+    setCategoryId(Number(params.category));
+    setQuery("");
+    setSearchOpen(false);
+  }
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
 

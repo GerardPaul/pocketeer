@@ -66,19 +66,21 @@ export function BudgetTile({
   spent,
   budget,
   currency,
+  onPress,
 }: {
   name: string;
   icon: IconName;
   spent: number;
   budget: number;
   currency: string;
+  onPress?: () => void;
 }) {
   const { tint } = useColors();
   const dark = useColorScheme().colorScheme === "dark";
   const over = spent > budget;
   // The ring shows what's left, so it empties as the budget gets used.
   const left = budget ? Math.max(0, ((budget - spent) / budget) * 100) : 0;
-  return (
+  const tile = (
     <View className="items-center gap-2">
       <View
         accessibilityRole="progressbar"
@@ -110,6 +112,21 @@ export function BudgetTile({
         )}
       </View>
     </View>
+  );
+  if (!onPress) return tile;
+  // A button reads as one item, so its label carries what the ring and text show.
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}: ${formatMoney(spent, currency)} of ${formatMoney(budget, currency)}, ${
+        over ? `over by ${formatMoney(spent - budget, currency)}` : `${formatMoney(budget - spent, currency)} left`
+      }`}
+      accessibilityHint="Shows these transactions in History"
+      onPress={onPress}
+      className="active:opacity-70"
+    >
+      {tile}
+    </Pressable>
   );
 }
 
