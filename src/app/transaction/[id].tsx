@@ -14,6 +14,7 @@ import {
   Muted,
   Segmented,
   Select,
+  TextButton,
 } from "@/components/ui";
 import { deleteTransaction, saveTransaction } from "@/db/db";
 import {
@@ -22,6 +23,7 @@ import {
   type TransactionType,
   budgetFor,
   budgetWarning,
+  currentMonth,
   deleteTransactionProblem,
   spentFor,
   toDateString,
@@ -106,6 +108,9 @@ function TransactionForm({
   }));
   const toAccountOptions = accountOptions.filter((o) => o.value !== accountId);
   const today = toDateString(new Date());
+  // This month, like Home and the category form's budget field.
+  const picked = data.categories.find((c) => c.id === categoryId);
+  const unbudgeted = picked && budgetFor(picked.id, currentMonth(), data.budgets) === null ? picked : undefined;
 
   const minor = parseAmount(amount, currency);
   const tx: NewTransaction | null =
@@ -122,7 +127,10 @@ function TransactionForm({
           category_id: type === "expense" ? categoryId : null,
         };
   // Balance rules are checked on save, where the error can say which account is the problem.
-  const canSave = tx !== null && transactionShapeProblem(tx, data.accounts) === null && date <= today;
+  // New expenses need a budgeted category, so everything logged shows on Home. Edits stay allowed,
+  // since imported transactions can already sit in categories without one.
+  const needsBudget = !existing && type === "expense" && unbudgeted !== undefined;
+  const canSave = tx !== null && transactionShapeProblem(tx, data.accounts) === null && date <= today && !needsBudget;
 
   // Heads-up when this expense brings its category near or past that month's budget.
   function budgetNote(t: NewTransaction): string | null {
@@ -142,6 +150,7 @@ function TransactionForm({
   async function save() {
     if (!tx) return setError("Enter a valid amount.");
     if (date > today) return setError("The date can't be in the future.");
+    if (needsBudget) return setError(`Set a budget for ${unbudgeted.name} first.`);
     const problem = validateTransaction(tx, data.accounts, data.transactions);
     if (problem) return setError(problem);
     try {
@@ -196,12 +205,31 @@ function TransactionForm({
             />
           </View>
         ) : (
-          <Select
-            label="Category"
-            options={data.categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon }))}
-            value={categoryId}
-            onChange={setCategoryId}
-          />
+          <>
+            <Select
+              label="Category"
+              options={data.categories.map((c) => ({ value: c.id, label: c.name, icon: c.icon }))}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+            {/* Home only shows budgeted categories, so say so here and offer to set one. */}
+            {unbudgeted && (
+              <View className="flex-row flex-wrap items-center justify-between gap-x-2">
+                <View className="flex-1">
+                  <Muted>
+                    {needsBudget
+                      ? `${unbudgeted.name} has no monthly budget. Set one to log expenses in it.`
+                      : `${unbudgeted.name} has no monthly budget, so it won’t show on Home.`}
+                  </Muted>
+                </View>
+                <TextButton
+                  title="Set budget"
+                  icon="edit"
+                  onPress={() => router.push({ pathname: "/category/[id]", params: { id: unbudgeted.id } })}
+                />
+              </View>
+            )}
+          </>
         ))}
       <DateField label="Date" value={date} onChange={setDate} max={today} />
       {/* Phone pickers stop at today; typed web dates can still land in the future. */}
