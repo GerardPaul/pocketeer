@@ -23,12 +23,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       AccessibilityInfo.announceForAccessibility(text);
       Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver }).start();
       clearTimeout(timer.current);
+      // Longer messages (like a budget heads-up) stay up long enough to read.
       timer.current = setTimeout(() => {
         // A newer toast interrupts this fade, so only clear the text if it finished.
         Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver }).start(
           ({ finished }) => finished && setMessage(null),
         );
-      }, 2500);
+      }, Math.max(2500, text.length * 60));
     },
     [opacity],
   );
@@ -44,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         >
           <View className="flex-row items-center gap-2 rounded-full bg-primary px-5 py-3 shadow-lg">
             <Icon name="check" color="#FFFFFF" size={18} />
-            <Text className="font-medium text-sm text-white">{message}</Text>
+            <Text className="shrink font-medium text-sm text-white">{message}</Text>
           </View>
         </Animated.View>
       )}

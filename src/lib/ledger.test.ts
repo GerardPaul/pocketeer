@@ -4,6 +4,7 @@ import {
   accountAmount,
   backupDueDays,
   budgetFor,
+  budgetWarning,
   cardCycle,
   daysBetween,
   deleteTransactionProblem,
@@ -321,5 +322,24 @@ describe("groupByDay", () => {
       { date: "2026-11-12", data: [rows[2]] },
     ]);
     expect(groupByDay([])).toEqual([]);
+  });
+});
+
+describe("budgetWarning", () => {
+  it("warns once on reaching 80%, then on every expense past the budget", () => {
+    expect(budgetWarning(0, 7900, 10000)).toBeNull();
+    expect(budgetWarning(7900, 8000, 10000)).toBe("near");
+    expect(budgetWarning(8000, 9000, 10000)).toBeNull();
+    expect(budgetWarning(9000, 10000, 10000)).toBeNull();
+    expect(budgetWarning(10000, 10001, 10000)).toBe("over");
+    expect(budgetWarning(12000, 13000, 10000)).toBe("over");
+  });
+
+  it("stays quiet when an edit lowers spending", () => {
+    expect(budgetWarning(12000, 11000, 10000)).toBeNull();
+  });
+
+  it("treats any spending against a zero budget as over", () => {
+    expect(budgetWarning(0, 100, 0)).toBe("over");
   });
 });

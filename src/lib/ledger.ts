@@ -158,6 +158,14 @@ export function budgetFor(
   return best?.amount ?? null;
 }
 
+// Whether an expense deserves a heads-up about its category's budget: once when it first reaches 80%,
+// and every time it adds to a budget that's already gone over.
+export function budgetWarning(spentBefore: number, spentAfter: number, budget: number): "near" | "over" | null {
+  if (spentAfter <= spentBefore) return null;
+  if (spentAfter > budget) return "over";
+  return spentAfter * 5 >= budget * 4 && spentBefore * 5 < budget * 4 ? "near" : null;
+}
+
 export function spentFor(categoryId: number, month: string, txs: readonly Transaction[]): number {
   let total = 0;
   for (const t of txs) {

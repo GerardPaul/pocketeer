@@ -3,7 +3,7 @@ import { PanResponder, Pressable, SectionList, Text, View } from "react-native";
 
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { CategoryBars, MonthBars } from "@/components/charts";
-import { TransactionRow } from "@/components/transaction-list";
+import { DayHeader, TransactionRow } from "@/components/transaction-list";
 import {
   ErrorText,
   Field,
@@ -22,7 +22,6 @@ import {
   type TransactionType,
   budgetFor,
   currentMonth,
-  formatDay,
   formatMonth,
   groupByDay,
   matchesSearch,
@@ -335,13 +334,8 @@ export default function History() {
         renderSectionHeader={({ section }) => {
           const { net } = summarize(section.data);
           return (
-            <View
-              accessible
-              accessibilityRole="header"
-              className="flex-row items-center justify-between bg-primary px-5 pb-1 pt-3"
-            >
-              <Text className="font-semibold text-sm text-white">{formatDay(section.date)}</Text>
-              {net !== 0 && <Text className="font-medium text-sm text-white">{signed(net, currency)}</Text>}
+            <View className="bg-primary px-3">
+              <DayHeader date={section.date} total={net === 0 ? undefined : signed(net, currency)} />
             </View>
           );
         }}

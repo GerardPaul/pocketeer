@@ -20,12 +20,15 @@ import {
   type NewTransaction,
   type Transaction,
   type TransactionType,
+  budgetFor,
+  budgetWarning,
   deleteTransactionProblem,
+  spentFor,
   toDateString,
   transactionShapeProblem,
   validateTransaction,
 } from "@/lib/ledger";
-import { parseAmount, toInputString } from "@/lib/money";
+import { formatMoney, parseAmount, toInputString } from "@/lib/money";
 import { HOME } from "@/lib/routes";
 import { useData } from "@/lib/use-data";
 
@@ -121,6 +124,21 @@ function TransactionForm({
   // Balance rules are checked on save, where the error can say which account is the problem.
   const canSave = tx !== null && transactionShapeProblem(tx, data.accounts) === null && date <= today;
 
+  // Heads-up when this expense brings its category near or past that month's budget.
+  function budgetNote(t: NewTransaction): string | null {
+    if (t.type !== "expense" || t.category_id === null) return null;
+    const month = t.date.slice(0, 7);
+    const budget = budgetFor(t.category_id, month, data.budgets);
+    if (budget === null) return null;
+    const before = spentFor(t.category_id, month, data.transactions);
+    const after = spentFor(t.category_id, month, data.transactions.filter((x) => x.id !== t.id)) + t.amount;
+    const name = data.categories.find((c) => c.id === t.category_id)?.name ?? "This category";
+    const warning = budgetWarning(before, after, budget);
+    if (warning === "over") return `${name} is over budget by ${formatMoney(after - budget, currency)}.`;
+    if (warning === "near") return `${name} has ${formatMoney(budget - after, currency)} left this month.`;
+    return null;
+  }
+
   async function save() {
     if (!tx) return setError("Enter a valid amount.");
     if (date > today) return setError("The date can't be in the future.");
@@ -129,7 +147,9 @@ function TransactionForm({
     try {
       await saveTransaction(db, tx);
       close();
-      toast(existing ? "Transaction updated" : "Transaction logged");
+      const done = existing ? "Transaction updated" : "Transaction logged";
+      const warning = budgetNote(tx);
+      toast(warning ? `${done}. ${warning}` : done);
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }

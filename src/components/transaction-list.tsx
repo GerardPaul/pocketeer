@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Icon } from "@/components/ui";
 import type { Data } from "@/db/db";
-import type { Transaction } from "@/lib/ledger";
+import { type Transaction, formatDay, groupByDay } from "@/lib/ledger";
 import { formatMoney } from "@/lib/money";
 import palette from "@/lib/palette";
 
@@ -34,9 +34,31 @@ export function TransactionList({
         {title}
       </Text>
       {transactions.length === 0 && <Text className="px-1 pb-2 font-regular text-sm text-white">{empty}</Text>}
-      {transactions.map((t) => (
-        <TransactionRow key={t.id} transaction={t} data={data} currency={currency} accountId={accountId} showDate />
+      {groupByDay(transactions).map((day) => (
+        <View key={day.date}>
+          <DayHeader date={day.date} />
+          {day.data.map((t) => (
+            <TransactionRow
+              key={t.id}
+              transaction={t}
+              data={data}
+              currency={currency}
+              accountId={accountId}
+              showDate={false}
+            />
+          ))}
+        </View>
       ))}
+    </View>
+  );
+}
+
+// Date over each day's rows inside the teal panel, with that day's net when one is given.
+export function DayHeader({ date, total }: { date: string; total?: string }) {
+  return (
+    <View accessible accessibilityRole="header" className="flex-row items-center justify-between px-2 pb-1 pt-3">
+      <Text className="font-semibold text-sm text-white">{formatDay(date)}</Text>
+      {total && <Text className="font-medium text-sm text-white">{total}</Text>}
     </View>
   );
 }
