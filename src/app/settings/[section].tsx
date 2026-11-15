@@ -64,7 +64,7 @@ export default function SettingsPage() {
     !(section === "reminders" && !REMINDERS_SUPPORTED);
   if (!known) return <EmptyState message="This settings page doesn’t exist." />;
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions, recurring } = data;
+  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions, recurring, goals } = data;
   const cardsWithDueDay = accounts.some((a) => a.type === "credit_card" && a.due_day !== null);
 
   async function changeTheme(theme: Theme) {
@@ -91,7 +91,7 @@ export default function SettingsPage() {
         return setProblem("Notifications are off for Pocketeer. Turn them on in your phone’s settings to get reminders.");
       }
       await saveReminders(db, next);
-      const loaded = { currency, lastBackup, accounts, categories, budgets, transactions, recurring };
+      const loaded = { currency, lastBackup, accounts, categories, budgets, transactions, recurring, goals };
       await scheduleReminders({ ...loaded, reminders: next });
       reload();
       if (turningOn) toast("Reminder on");
@@ -117,7 +117,7 @@ export default function SettingsPage() {
       const now = new Date();
       await shareFile(
         `pocketeer-backup-${toDateString(now)}.json`,
-        toBackupJson({ currency, accounts, categories, budgets, transactions, recurring }, now),
+        toBackupJson({ currency, accounts, categories, budgets, transactions, recurring, goals }, now),
         "backup",
       );
       // ponytail: the share sheet doesn't say whether the file was actually saved, so any completed export counts.

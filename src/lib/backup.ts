@@ -3,6 +3,7 @@ import {
   type Account,
   type Category,
   type CategoryBudget,
+  type Goal,
   type Recurring,
   type Transaction,
   isDay,
@@ -204,7 +205,33 @@ export function parseBackup(text: string): Result {
     recurring.push(item);
   }
 
+  // Older backups have no goals. Progress is a regular account's balance, so the account has to be one.
+  const rawGoals = raw.goals ?? [];
+  if (!Array.isArray(rawGoals)) return fail("Backup has invalid goals.");
+  const goals: Goal[] = [];
+  for (const g of rawGoals as unknown[]) {
+    if (
+      !isRecord(g) ||
+      !isId(g.id) ||
+      typeof g.name !== "string" ||
+      !g.name.trim() ||
+      !isId(g.target) ||
+      !accounts.some((a) => a.id === g.account_id && a.type === "regular") ||
+      !(g.target_date === null || (typeof g.target_date === "string" && isRealDate(g.target_date)))
+    ) {
+      return fail("Backup has an invalid goal.");
+    }
+    goals.push({
+      id: g.id,
+      name: g.name,
+      target: g.target,
+      account_id: g.account_id as number,
+      target_date: g.target_date as string | null,
+    });
+  }
+
   const unique = (ids: number[]) => new Set(ids).size === ids.length;
+  if (!unique(goals.map((g) => g.id))) return fail("Backup has duplicate goals.");
   if (!unique(recurring.map((r) => r.id))) return fail("Backup has duplicate recurring transactions.");
   if (!unique(accounts.map((a) => a.id))) return fail("Backup has duplicate accounts.");
   if (!unique(categories.map((c) => c.id))) return fail("Backup has duplicate categories.");
@@ -219,5 +246,5 @@ export function parseBackup(text: string): Result {
     if (problem) return fail(`Backup breaks a balance rule: ${problem}`);
   }
 
-  return { ok: true, backup: { currency: raw.currency, accounts, categories, budgets, transactions, recurring } };
+  return { ok: true, backup: { currency: raw.currency, accounts, categories, budgets, transactions, recurring, goals } };
 }

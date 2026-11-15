@@ -11,13 +11,16 @@ import {
   deleteTransactionProblem,
   dueRecurring,
   dueReminders,
+  goalMonthly,
   groupByDay,
   isRealDate,
   matchesSearch,
   monthlyTotals,
   nextDueDate,
   nextOccurrence,
+  noteSuggestions,
   ordinal,
+  safeToSpend,
   shiftMonth,
   spendingByCategory,
   spentFor,
@@ -405,5 +408,74 @@ describe("recurring", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 30, 31].map(ordinal)).toEqual(
       ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "30th", "31st"],
     );
+  });
+});
+
+describe("safeToSpend", () => {
+  const food = { id: 1, name: "Food", icon: "food" as const };
+  const fun = { id: 2, name: "Fun", icon: "tag" as const };
+  const none = { id: 3, name: "Gifts", icon: "tag" as const };
+  const budgets = [
+    { category_id: 1, month: "2026-11", amount: 3000 },
+    { category_id: 2, month: "2026-11", amount: 1000 },
+  ];
+  const spend = (id: number, category_id: number, amount: number, date: string): Transaction => ({
+    id, type: "expense", amount, date, note: "", account_id: 1, to_account_id: null, category_id,
+  });
+
+  it("spreads what's left over the days left, today included, ignoring today's spending", () => {
+    const txs = [spend(1, 1, 600, "2026-11-10"), spend(2, 1, 500, "2026-11-16"), spend(3, 3, 9999, "2026-11-01")];
+    // (3000 - 600) + 1000 = 3400 over Nov 16..30 = 15 days.
+    expect(safeToSpend([food, fun, none], budgets, txs, "2026-11-16")).toEqual({ perDay: 226, daysLeft: 15 });
+  });
+
+  it("counts an over-budget category as nothing left", () => {
+    const txs = [spend(1, 2, 5000, "2026-11-01")];
+    expect(safeToSpend([food, fun], budgets, txs, "2026-11-30")).toEqual({ perDay: 3000, daysLeft: 1 });
+  });
+
+  it("is null when nothing has a budget", () => {
+    expect(safeToSpend([none], budgets, [], "2026-11-16")).toBeNull();
+  });
+});
+
+describe("noteSuggestions", () => {
+  const tx = (id: number, note: string, date: string, extra: Partial<Transaction> = {}): Transaction => ({
+    id, type: "expense", amount: 100, date, note, account_id: 1, to_account_id: null, category_id: 1, ...extra,
+  });
+  const txs = [
+    tx(1, "Lunch", "2026-11-01"),
+    tx(2, "lunch", "2026-11-03"),
+    tx(3, "Coffee", "2026-11-05"),
+    tx(4, "Snacks", "2026-11-04"),
+    tx(5, "Dinner", "2026-11-06", { category_id: 2 }),
+    tx(6, "Salary", "2026-11-06", { type: "income", category_id: null }),
+    tx(7, "", "2026-11-07"),
+  ];
+  const expense = { type: "expense" as const, category_id: 1 };
+
+  it("ranks the same category's notes by use, then by how recent", () => {
+    expect(noteSuggestions(txs, expense, "")).toEqual(["Lunch", "Coffee", "Snacks"]);
+  });
+
+  it("keeps notes containing what's typed, and not the note typed in full", () => {
+    expect(noteSuggestions(txs, expense, "unc")).toEqual(["Lunch"]);
+    expect(noteSuggestions(txs, expense, "LUNCH")).toEqual([]);
+    expect(noteSuggestions(txs, { type: "income", category_id: null }, "")).toEqual(["Salary"]);
+  });
+});
+
+describe("goalMonthly", () => {
+  const goal = { target: 12000, target_date: "2027-04-30" };
+
+  it("splits what's left over the months to the target date, this month included", () => {
+    expect(goalMonthly(0, goal, "2026-11-16")).toBe(2000);
+    expect(goalMonthly(2000, goal, "2026-11-16")).toBe(1667);
+  });
+
+  it("asks for the rest at once when the date has passed, and nothing without a date or once reached", () => {
+    expect(goalMonthly(2000, goal, "2027-06-01")).toBe(10000);
+    expect(goalMonthly(2000, { ...goal, target_date: null }, "2026-11-16")).toBeNull();
+    expect(goalMonthly(12000, goal, "2026-11-16")).toBeNull();
   });
 });

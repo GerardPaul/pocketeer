@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { DateField } from "@/components/date-field";
 import { scheduleText } from "@/components/recurring";
@@ -31,6 +31,7 @@ import {
   isDay,
   isRealDate,
   nextOccurrence,
+  noteSuggestions,
   ordinal,
   spentFor,
   toDateString,
@@ -189,6 +190,11 @@ function TransactionForm({
     : repeat === "twice" && !(isDay(second) && second !== day)
       ? `Enter a second day from 1 to 31, other than the ${ordinal(day)}.`
       : null;
+  // Past notes for this kind of transaction, so "Lunch" or "Grab" is a tap away. Not when editing a logged one,
+  // whose note is already set.
+  const suggestions = existing
+    ? []
+    : noteSuggestions(data.transactions, { type, category_id: type === "expense" ? categoryId : null }, note);
   const canSave =
     tx !== null &&
     transactionShapeProblem(tx, data.accounts) === null &&
@@ -324,6 +330,23 @@ function TransactionForm({
       {/* Phone pickers stop at today; typed web dates can still land in the future. */}
       {date > today && <ErrorText>The date can’t be in the future.</ErrorText>}
       <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
+      {suggestions.length > 0 && (
+        <View className="-mt-1 flex-row flex-wrap gap-2">
+          {suggestions.map((s) => (
+            <Pressable
+              key={s}
+              accessibilityRole="button"
+              accessibilityLabel={`Use note ${s}`}
+              onPress={() => setNote(s)}
+              className="min-h-9 max-w-full justify-center rounded-full bg-sea/10 px-3 active:opacity-60 dark:bg-white/10"
+            >
+              <Text numberOfLines={1} className="font-medium text-sm text-ink dark:text-white">
+                {s}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {(canRepeat || editing) && (
         <>
           {/* Stop repeating lives on the Settings list, so an edit picks between the two schedules only. */}

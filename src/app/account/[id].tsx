@@ -61,6 +61,8 @@ function AccountForm({
   const used = existing
     ? data.transactions.some((t) => t.account_id === existing.id || t.to_account_id === existing.id)
     : false;
+  // Goals count a regular account's balance, so an account with one keeps its type too.
+  const typeLocked = used || (existing !== undefined && data.goals.some((g) => g.account_id === existing.id));
 
   async function save() {
     if (startingAmount === null) return setError("Enter a valid starting amount.");
@@ -102,7 +104,7 @@ function AccountForm({
     <FormScrollView>
       <Stack.Screen options={{ title: existing ? "Edit account" : "New account" }} />
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Cash, BDO, Visa" />
-      {used ? (
+      {typeLocked ? (
         <Muted>Type: {type === "regular" ? "Regular" : "Credit card"} (can’t change once used)</Muted>
       ) : (
         <Segmented label="Type" options={TYPES} value={type} onChange={setType} />

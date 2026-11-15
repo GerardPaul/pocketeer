@@ -14,6 +14,7 @@ const sample: Backup = {
     { id: 3, type: "transfer", amount: 50000, date: "2026-10-31", note: "", account_id: 1, to_account_id: 2, category_id: null },
   ],
   recurring: [],
+  goals: [],
 };
 
 describe("recurring in backups", () => {
@@ -29,7 +30,7 @@ describe("recurring in backups", () => {
   });
 
   it("reads older backups that have none", () => {
-    const { recurring: _, ...old } = file();
+    const { recurring: _, goals: __, ...old } = file();
     expect(parseBackup(JSON.stringify(old))).toEqual({ ok: true, backup: sample });
   });
 
@@ -37,6 +38,24 @@ describe("recurring in backups", () => {
     for (const bad of [{ day: 32 }, { second_day: 0 }, { handled_through: "2026-02-30" }, { category_id: null }]) {
       const f = file();
       f.recurring[0] = { ...f.recurring[0], ...bad };
+      expect(parseBackup(JSON.stringify(f)).ok).toBe(false);
+    }
+  });
+});
+
+describe("goals in backups", () => {
+  const goal = { id: 1, name: "Emergency fund", target: 5000000, account_id: 1, target_date: "2027-06-30" };
+  const withGoal = { ...sample, goals: [goal] };
+  const file = () => JSON.parse(toBackupJson(withGoal, new Date("2026-10-31T00:00:00Z")));
+
+  it("round-trips goals", () => {
+    expect(parseBackup(toBackupJson(withGoal, new Date()))).toEqual({ ok: true, backup: withGoal });
+  });
+
+  it("rejects a goal on a credit card, a missing account, or a bad target or date", () => {
+    for (const bad of [{ account_id: 2 }, { account_id: 9 }, { target: 0 }, { target_date: "2027-02-30" }, { name: " " }]) {
+      const f = file();
+      f.goals[0] = { ...f.goals[0], ...bad };
       expect(parseBackup(JSON.stringify(f)).ok).toBe(false);
     }
   });

@@ -1,9 +1,9 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { type CategoryIcon, toCategoryIcon } from "@/lib/category-icons";
-import type { Account, Category, CategoryBudget, NewTransaction, Recurring, Transaction } from "@/lib/ledger";
+import type { Account, Category, CategoryBudget, Goal, NewTransaction, Recurring, Transaction } from "@/lib/ledger";
 
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -82,6 +82,18 @@ export async function migrate(db: SQLiteDatabase) {
       );
     `);
   }
+  if (version < 5) {
+    // A goal's progress is its account's balance, so the goal goes along when the account is deleted.
+    await db.execAsync(`
+      CREATE TABLE goals (
+        id INTEGER PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        target INTEGER NOT NULL CHECK (target > 0),
+        account_id INTEGER NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+        target_date TEXT
+      );
+    `);
+  }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
@@ -100,6 +112,7 @@ export type Data = {
   budgets: CategoryBudget[];
   transactions: Transaction[];
   recurring: Recurring[];
+  goals: Goal[];
 };
 
 // DO NOTHING keeps the first choice: currency is locked once set.
@@ -217,6 +230,19 @@ export async function deleteRecurring(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM recurring WHERE id = ?", id);
 }
 
+export async function saveGoal(db: SQLiteDatabase, g: Omit<Goal, "id"> & { id?: number }) {
+  const values = [g.name.trim(), g.target, g.account_id, g.target_date] as const;
+  if (g.id === undefined) {
+    await db.runAsync("INSERT INTO goals (name, target, account_id, target_date) VALUES (?, ?, ?, ?)", ...values);
+  } else {
+    await db.runAsync("UPDATE goals SET name = ?, target = ?, account_id = ?, target_date = ? WHERE id = ?", ...values, g.id);
+  }
+}
+
+export async function deleteGoal(db: SQLiteDatabase, id: number) {
+  await db.runAsync("DELETE FROM goals WHERE id = ?", id);
+}
+
 export async function deleteTransaction(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM transactions WHERE id = ?", id);
 }
@@ -265,6 +291,7 @@ export async function saveLastBackup(db: SQLiteDatabase, date: string) {
 
 // The theme, app lock and reminders are phone preferences, not data, so they survive clearing and importing.
 const DELETE_ALL = `
+  DELETE FROM goals;
   DELETE FROM recurring;
   DELETE FROM transactions;
   DELETE FROM category_budgets;
@@ -317,12 +344,19 @@ export async function replaceAllData(
         r.handled_through,
       );
     }
+    for (const g of data.goals) {
+      await db.runAsync(
+        "INSERT INTO goals (id, name, target, account_id, target_date) VALUES (?, ?, ?, ?, ?)",
+        g.id, g.name, g.target, g.account_id, g.target_date,
+      );
+    }
   });
 }
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
-  const [setting, backup, due, daily, accounts, categories, budgets, transactions, recurring] = await Promise.all([
+  const [setting, backup, due, daily, accounts, categories, budgets, transactions, recurring, goals] =
+    await Promise.all([
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'currency'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'last_backup'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_due'"),
@@ -332,6 +366,7 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
     db.getAllAsync<Transaction>("SELECT * FROM transactions ORDER BY date DESC, id DESC"),
     db.getAllAsync<Recurring>("SELECT * FROM recurring ORDER BY id"),
+    db.getAllAsync<Goal>("SELECT * FROM goals ORDER BY name COLLATE NOCASE"),
   ]);
   return {
     currency: setting?.value ?? null,
@@ -347,5 +382,6 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
     budgets,
     transactions,
     recurring,
+    goals,
   };
 }

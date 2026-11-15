@@ -96,7 +96,17 @@ function Totals({ txs, currency }: { txs: readonly Transaction[]; currency: stri
 }
 
 // Budgets and charts for the whole month. Filters belong to the list, so they don't apply here.
-function Insights({ data, month, setMonth }: { data: Data; month: string; setMonth: (m: string) => void }) {
+function Insights({
+  data,
+  month,
+  setMonth,
+  onPickCategory,
+}: {
+  data: Data;
+  month: string;
+  setMonth: (m: string) => void;
+  onPickCategory: (id: number) => void;
+}) {
   const currency = data.currency!;
   const monthTxs = data.transactions.filter((t) => t.date.startsWith(month));
   const tiles = data.categories.flatMap((c) => {
@@ -115,7 +125,15 @@ function Insights({ data, month, setMonth }: { data: Data; month: string; setMon
           <Heading>Budgets</Heading>
           <BudgetGrid>
             {tiles.map((c) => (
-              <BudgetTile key={c.id} name={c.name} icon={c.icon} spent={c.spent} budget={c.budget} currency={currency} />
+              <BudgetTile
+                key={c.id}
+                name={c.name}
+                icon={c.icon}
+                spent={c.spent}
+                budget={c.budget}
+                currency={currency}
+                onPress={() => onPickCategory(c.id)}
+              />
             ))}
           </BudgetGrid>
         </>
@@ -180,20 +198,24 @@ export default function History() {
       },
     }),
   );
-  // A budget tapped on Home opens this month's transactions for that category. History is a tab and keeps
-  // its state, so each new request (a new `at`) resets the view once, during render rather than in an effect.
+  // A budget tapped on Home or Insights shows that category's transactions, with other filters and search cleared.
+  const showCategory = (id: number) => {
+    setView("transactions");
+    setType("all");
+    setAccountId(ALL);
+    setCategoryId(id);
+    setQuery("");
+    setSearchOpen(false);
+  };
+  // From Home it's this month. History is a tab and keeps its state, so each new request (a new `at`) resets the
+  // view once, during render rather than in an effect.
   const params = useLocalSearchParams<{ category?: string; at?: string }>();
   const request = params.category && params.at ? `${params.category}:${params.at}` : null;
   const [handled, setHandled] = useState<string | null>(null);
   if (request !== null && request !== handled) {
     setHandled(request);
     setMonth(currentMonth());
-    setView("transactions");
-    setType("all");
-    setAccountId(ALL);
-    setCategoryId(Number(params.category));
-    setQuery("");
-    setSearchOpen(false);
+    showCategory(Number(params.category));
   }
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
   const currency = data.currency;
@@ -370,7 +392,7 @@ export default function History() {
           </View>
         </>
       ) : (
-        <Insights data={data} month={month} setMonth={setMonth} />
+        <Insights data={data} month={month} setMonth={setMonth} onPickCategory={showCategory} />
       )}
     </View>
   );

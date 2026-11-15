@@ -15,6 +15,7 @@ import {
   daysBetween,
   dueRecurring,
   formatMonth,
+  safeToSpend,
   spentFor,
   toDateString,
 } from "@/lib/ledger";
@@ -62,6 +63,7 @@ function BackupReminder({ days, backedUp }: { days: number; backedUp: boolean })
 export default function Home() {
   const { db, data, error, reload } = useData();
   const toast = useToast();
+  const { tint } = useColors();
   // Home loads on every launch and after each edit elsewhere, so this keeps reminders in step with the data:
   // a paid-off card stops reminding and a new due date gets one.
   useEffect(() => {
@@ -81,6 +83,17 @@ export default function Home() {
     const budget = budgetFor(c.id, month, data.budgets);
     return budget === null ? [] : [{ ...c, budget }];
   });
+
+  // Goals live on the Accounts tab; Home only links there, with a one-line summary.
+  const reached = data.goals.filter((g) => {
+    const account = data.accounts.find((a) => a.id === g.account_id);
+    return account !== undefined && accountAmount(account, data.transactions) >= g.target;
+  }).length;
+  const goalsLine =
+    data.goals.length === 0
+      ? "Set a target, like an emergency fund"
+      : `${data.goals.length} ${data.goals.length === 1 ? "goal" : "goals"}${reached ? ` · ${reached} reached` : ""}`;
+  const safe = safeToSpend(data.categories, data.budgets, data.transactions, today);
 
   let cash = 0;
   let owed = 0;
@@ -102,6 +115,17 @@ export default function Home() {
           <Text className="font-regular text-sm text-white">Credit card debt</Text>
           <Text className="font-semibold text-base text-white">{formatMoney(owed, currency)}</Text>
         </View>
+        {safe && (
+          <View className="flex-row items-center justify-between rounded-2xl bg-white/10 px-4 py-3">
+            <View className="shrink">
+              <Text className="font-regular text-sm text-white">Safe to spend per day</Text>
+              <Text className="font-regular text-xs text-white/80">
+                {safe.daysLeft === 1 ? "Budgets left for today" : `Budgets left over the next ${safe.daysLeft} days`}
+              </Text>
+            </View>
+            <Text className="font-semibold text-base text-white">{formatMoney(safe.perDay, currency)}</Text>
+          </View>
+        )}
         <Button
           title="Log transaction"
           icon="add"
@@ -159,6 +183,16 @@ export default function Home() {
           </View>
         ))}
       </ScrollView>
+      <Card onPress={() => router.navigate({ pathname: "/accounts", params: { view: "goals", at: Date.now() } })}>
+        <View className="flex-row items-center gap-3">
+          <Icon name="savings" color={tint} size={22} />
+          <View className="flex-1">
+            <Text className="font-semibold text-base text-ink dark:text-white">Savings goals</Text>
+            <Muted>{goalsLine}</Muted>
+          </View>
+          <Icon name="forward" color={tint} size={20} />
+        </View>
+      </Card>
 
       <Heading>{`Budgets · ${formatMonth(month)}`}</Heading>
       {budgeted.length === 0 && (

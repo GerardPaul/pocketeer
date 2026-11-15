@@ -410,3 +410,67 @@ export function monthlyTotals(
     return { month, income, spent };
   });
 }
+
+// What's left in this month's budgets, spread over the days left with today included. Over-budget categories count
+// as nothing left rather than eating into the others. Today's spending is left out, so the figure holds steady
+// through the day instead of shrinking with each expense. Null when nothing has a budget this month.
+export function safeToSpend(
+  categories: readonly Category[],
+  budgets: readonly CategoryBudget[],
+  txs: readonly Transaction[],
+  today: string,
+): { perDay: number; daysLeft: number } | null {
+  const month = today.slice(0, 7);
+  const before = txs.filter((t) => t.date < today);
+  let left = 0;
+  let budgeted = false;
+  for (const c of categories) {
+    const budget = budgetFor(c.id, month, budgets);
+    if (budget === null) continue;
+    budgeted = true;
+    left += Math.max(0, budget - spentFor(c.id, month, before));
+  }
+  if (!budgeted) return null;
+  const [y, m, d] = today.split("-").map(Number);
+  const daysLeft = new Date(y, m, 0).getDate() - d + 1;
+  return { perDay: Math.floor(left / daysLeft), daysLeft };
+}
+
+// Notes used before on the same kind of transaction (same category for expenses), most used first, then most
+// recent. Only notes containing what's typed count, and the note already typed in full isn't suggested back.
+export function noteSuggestions(
+  txs: readonly Transaction[],
+  like: { type: TransactionType; category_id: number | null },
+  typed: string,
+  limit = 3,
+): string[] {
+  const query = typed.trim().toLowerCase();
+  const seen = new Map<string, { note: string; count: number; last: string }>();
+  for (const t of txs) {
+    const note = t.note.trim();
+    if (!note || t.type !== like.type || (like.type === "expense" && t.category_id !== like.category_id)) continue;
+    const key = note.toLowerCase();
+    if (key === query || !key.includes(query)) continue;
+    const s = seen.get(key);
+    if (!s) seen.set(key, { note, count: 1, last: t.date });
+    else {
+      s.count++;
+      if (t.date > s.last) s.last = t.date;
+    }
+  }
+  return [...seen.values()]
+    .sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
+    .slice(0, limit)
+    .map((s) => s.note);
+}
+
+export type Goal = { id: number; name: string; target: number; account_id: number; target_date: string | null };
+
+// How much to put in each month, this month included, to reach the target by its date. Null without a date or
+// once it's reached; a date already past asks for the whole rest now.
+export function goalMonthly(saved: number, goal: Pick<Goal, "target" | "target_date">, today: string): number | null {
+  if (goal.target_date === null || saved >= goal.target) return null;
+  const months = (s: string) => Number(s.slice(0, 4)) * 12 + Number(s.slice(5, 7));
+  const count = Math.max(1, months(goal.target_date) - months(today) + 1);
+  return Math.ceil((goal.target - saved) / count);
+}
