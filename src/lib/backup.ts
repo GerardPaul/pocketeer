@@ -3,8 +3,10 @@ import {
   type Account,
   type Category,
   type CategoryBudget,
+  type Recurring,
   type Transaction,
   isDay,
+  isRealDate,
   transactionShapeProblem,
   validateAccount,
 } from "@/lib/ledger";
@@ -165,7 +167,45 @@ export function parseBackup(text: string): Result {
     transactions.push(tx);
   }
 
+  // Older backups have no recurring items.
+  const rawRecurring = raw.recurring ?? [];
+  if (!Array.isArray(rawRecurring)) return fail("Backup has invalid recurring transactions.");
+  const recurring: Recurring[] = [];
+  for (const r of rawRecurring as unknown[]) {
+    if (
+      !isRecord(r) ||
+      !isId(r.id) ||
+      (r.type !== "expense" && r.type !== "income" && r.type !== "transfer") ||
+      typeof r.note !== "string" ||
+      !(r.to_account_id === null || isId(r.to_account_id)) ||
+      !(r.category_id === null || categories.some((c) => c.id === r.category_id)) ||
+      !(isId(r.day) && isDay(r.day)) ||
+      !(r.second_day === null || (isId(r.second_day) && isDay(r.second_day))) ||
+      typeof r.handled_through !== "string" ||
+      !isRealDate(r.handled_through)
+    ) {
+      return fail("Backup has an invalid recurring transaction.");
+    }
+    const item: Recurring = {
+      id: r.id,
+      type: r.type,
+      amount: r.amount as number,
+      note: r.note,
+      account_id: r.account_id as number,
+      to_account_id: r.to_account_id as number | null,
+      category_id: r.category_id as number | null,
+      day: r.day,
+      second_day: r.second_day as number | null,
+      handled_through: r.handled_through,
+    };
+    // Same field rules as a transaction logged on its last handled date.
+    const problem = transactionShapeProblem({ ...item, date: item.handled_through }, accounts);
+    if (problem) return fail(`Backup has an invalid recurring transaction (${problem})`);
+    recurring.push(item);
+  }
+
   const unique = (ids: number[]) => new Set(ids).size === ids.length;
+  if (!unique(recurring.map((r) => r.id))) return fail("Backup has duplicate recurring transactions.");
   if (!unique(accounts.map((a) => a.id))) return fail("Backup has duplicate accounts.");
   if (!unique(categories.map((c) => c.id))) return fail("Backup has duplicate categories.");
   if (!unique(transactions.map((t) => t.id))) return fail("Backup has duplicate transactions.");
@@ -179,5 +219,5 @@ export function parseBackup(text: string): Result {
     if (problem) return fail(`Backup breaks a balance rule: ${problem}`);
   }
 
-  return { ok: true, backup: { currency: raw.currency, accounts, categories, budgets, transactions } };
+  return { ok: true, backup: { currency: raw.currency, accounts, categories, budgets, transactions, recurring } };
 }

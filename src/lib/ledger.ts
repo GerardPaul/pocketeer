@@ -298,6 +298,45 @@ export function nextDueDate(account: Account, today: string): { date: string; da
   return { date, days: daysBetween(today, date) };
 }
 
+// A transaction that repeats on one day of the month, or two ("twice a month", like a 15th-and-30th salary).
+// Days past a short month's end move to its last day. `handled_through` is the last due date logged or skipped;
+// the next date after it is what shows up as due.
+export type Recurring = Omit<Transaction, "id" | "date"> & {
+  id: number;
+  day: number;
+  second_day: number | null;
+  handled_through: string;
+};
+
+// The first date after `after` that `r` falls on.
+export function nextOccurrence(r: Pick<Recurring, "day" | "second_day">, after: string): string {
+  const [y, m] = after.split("-").map(Number);
+  const days = r.second_day === null ? [r.day] : [r.day, r.second_day];
+  // Two months ahead always holds one, even when both days clamp onto the same short-month date.
+  for (let i = 0; i < 2; i++) {
+    const dates = days.map((d) => dayInMonth(y, m - 1 + i, d)).sort();
+    const next = dates.find((d) => d > after);
+    if (next) return next;
+  }
+  return dayInMonth(y, m + 1, Math.min(...days));
+}
+
+// What's due by today, oldest first: each item's earliest date not yet logged or skipped. Handling it brings up
+// the next one, so a missed month waits its turn instead of piling up.
+export function dueRecurring(items: readonly Recurring[], today: string): { recurring: Recurring; date: string }[] {
+  return items
+    .map((recurring) => ({ recurring, date: nextOccurrence(recurring, recurring.handled_through) }))
+    .filter((d) => d.date <= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st, 22nd, 31st.
+export function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
 // Payment reminders for each credit card with a due day and money owed: the next `count` due dates, each reminded
 // `before` days ahead. Reminders that would fall before today are left out.
 export function dueReminders(

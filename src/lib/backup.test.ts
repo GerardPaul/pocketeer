@@ -13,7 +13,34 @@ const sample: Backup = {
     { id: 2, type: "expense", amount: 200000, date: "2026-10-31", note: "", account_id: 2, to_account_id: null, category_id: 1 },
     { id: 3, type: "transfer", amount: 50000, date: "2026-10-31", note: "", account_id: 1, to_account_id: 2, category_id: null },
   ],
+  recurring: [],
 };
+
+describe("recurring in backups", () => {
+  const rent = {
+    id: 1, type: "expense", amount: 30000, note: "Rent", account_id: 1, to_account_id: null, category_id: 1,
+    day: 1, second_day: 16, handled_through: "2026-10-16",
+  } as const;
+  const withRent = { ...sample, recurring: [rent] };
+  const file = () => JSON.parse(toBackupJson(withRent, new Date("2026-10-31T00:00:00Z")));
+
+  it("round-trips recurring items", () => {
+    expect(parseBackup(toBackupJson(withRent, new Date()))).toEqual({ ok: true, backup: withRent });
+  });
+
+  it("reads older backups that have none", () => {
+    const { recurring: _, ...old } = file();
+    expect(parseBackup(JSON.stringify(old))).toEqual({ ok: true, backup: sample });
+  });
+
+  it("rejects a bad day, date or category rule", () => {
+    for (const bad of [{ day: 32 }, { second_day: 0 }, { handled_through: "2026-02-30" }, { category_id: null }]) {
+      const f = file();
+      f.recurring[0] = { ...f.recurring[0], ...bad };
+      expect(parseBackup(JSON.stringify(f)).ok).toBe(false);
+    }
+  });
+});
 
 const json = () => JSON.parse(toBackupJson(sample, new Date("2026-10-31T00:00:00Z")));
 const parse = (obj: unknown) => parseBackup(JSON.stringify(obj));

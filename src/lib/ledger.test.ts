@@ -1,5 +1,6 @@
 import {
   type Account,
+  type Recurring,
   type Transaction,
   accountAmount,
   backupDueDays,
@@ -8,12 +9,15 @@ import {
   cardCycle,
   daysBetween,
   deleteTransactionProblem,
+  dueRecurring,
   dueReminders,
   groupByDay,
   isRealDate,
   matchesSearch,
   monthlyTotals,
   nextDueDate,
+  nextOccurrence,
+  ordinal,
   shiftMonth,
   spendingByCategory,
   spentFor,
@@ -364,5 +368,42 @@ describe("dueReminders", () => {
   it("leaves out paid-off cards, cards without a due day and regular accounts", () => {
     expect(dueReminders(accounts, [], "2026-11-15")).toEqual([]);
     expect(dueReminders([{ ...visa, due_day: null }, cash], owed, "2026-11-15")).toEqual([]);
+  });
+});
+
+describe("recurring", () => {
+  const rent: Recurring = {
+    id: 1, type: "expense", amount: 1400000, note: "Rent", account_id: 2, to_account_id: null, category_id: 1,
+    day: 1, second_day: null, handled_through: "2026-10-01",
+  };
+  const salary: Recurring = { ...rent, id: 2, type: "income", category_id: null, day: 15, second_day: 31, handled_through: "2026-10-31" };
+
+  it("finds the next date on one day a month, across the year end", () => {
+    expect(nextOccurrence(rent, "2026-10-01")).toBe("2026-11-01");
+    expect(nextOccurrence(rent, "2026-12-01")).toBe("2027-01-01");
+  });
+
+  it("alternates between two days and clamps to short months", () => {
+    expect(nextOccurrence(salary, "2026-10-31")).toBe("2026-11-15");
+    expect(nextOccurrence(salary, "2026-11-15")).toBe("2026-11-30");
+    expect(nextOccurrence(salary, "2027-02-15")).toBe("2027-02-28");
+    expect(nextOccurrence({ day: 30, second_day: 31 }, "2027-01-31")).toBe("2027-02-28");
+    expect(nextOccurrence({ day: 30, second_day: 31 }, "2027-02-28")).toBe("2027-03-30");
+  });
+
+  it("lists only what's due by today, oldest first, one date per item", () => {
+    expect(dueRecurring([salary, rent], "2026-10-31")).toEqual([]);
+    expect(dueRecurring([salary, rent], "2026-11-20")).toEqual([
+      { recurring: rent, date: "2026-11-01" },
+      { recurring: salary, date: "2026-11-15" },
+    ]);
+    // Months away: still only the oldest missed date, the rest follow as each is handled.
+    expect(dueRecurring([rent], "2027-02-10")).toEqual([{ recurring: rent, date: "2026-11-01" }]);
+  });
+
+  it("writes day ordinals", () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 30, 31].map(ordinal)).toEqual(
+      ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "30th", "31st"],
+    );
   });
 });

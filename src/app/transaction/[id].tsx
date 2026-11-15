@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { DateField } from "@/components/date-field";
+import { scheduleText } from "@/components/recurring";
 import { useToast } from "@/components/toast";
 import {
   Button,
@@ -19,12 +20,16 @@ import {
 import { deleteTransaction, saveTransaction } from "@/db/db";
 import {
   type NewTransaction,
+  type Recurring,
   type Transaction,
   type TransactionType,
   budgetFor,
   budgetWarning,
   currentMonth,
   deleteTransactionProblem,
+  isDay,
+  isRealDate,
+  ordinal,
   spentFor,
   toDateString,
   transactionShapeProblem,
@@ -40,13 +45,27 @@ const TYPES = [
   { value: "transfer", label: "Transfer" },
 ] as const;
 
+const REPEATS = [
+  { value: "off", label: "Off" },
+  { value: "monthly", label: "Monthly" },
+  { value: "twice", label: "Twice a month" },
+] as const;
+
 export default function TransactionScreen() {
   // `from` is set by "Log again": a new transaction that starts as a copy of that one.
-  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  // `recurring` and `due` are set by Log on a due card on Home: a new transaction filled in from that item.
+  const { id, from, recurring, due } = useLocalSearchParams<{
+    id: string;
+    from?: string;
+    recurring?: string;
+    due?: string;
+  }>();
   const { db, data } = useData();
   if (!data?.currency) return null;
   const existing = data.transactions.find((t) => String(t.id) === id);
   const template = id === "new" && from ? data.transactions.find((t) => String(t.id) === from) : undefined;
+  const item = id === "new" && recurring ? data.recurring.find((r) => String(r.id) === recurring) : undefined;
+  const fromRecurring = item && due && isRealDate(due) ? { item, due } : undefined;
   if (id !== "new" && !existing) return <EmptyState message="This transaction no longer exists." />;
   if (data.accounts.length === 0) {
     return (
@@ -61,9 +80,10 @@ export default function TransactionScreen() {
   }
   return (
     <TransactionForm
-      key={existing?.id ?? `new-${template?.id ?? ""}`}
+      key={existing?.id ?? `new-${template?.id ?? ""}-${fromRecurring ? `${fromRecurring.item.id}-${fromRecurring.due}` : ""}`}
       existing={existing}
       template={template}
+      fromRecurring={fromRecurring}
       db={db}
       data={data}
       currency={data.currency}
@@ -74,18 +94,21 @@ export default function TransactionScreen() {
 function TransactionForm({
   existing,
   template,
+  fromRecurring,
   db,
   data,
   currency,
 }: {
   existing: Transaction | undefined;
   template: Transaction | undefined;
+  fromRecurring: { item: Recurring; due: string } | undefined;
   db: ReturnType<typeof useData>["db"];
   data: NonNullable<ReturnType<typeof useData>["data"]>;
   currency: string;
 }) {
-  // A copy takes everything but the date, which starts at today like any new entry.
-  const start = existing ?? template;
+  // A copy takes everything but the date, which starts at today like any new entry; a due recurring item starts
+  // on its due date.
+  const start = existing ?? template ?? fromRecurring?.item;
   const [type, setType] = useState<TransactionType>(start?.type ?? "expense");
   const [amount, setAmount] = useState(start ? toInputString(start.amount, currency) : "");
   const [accountId, setAccountId] = useState<number | null>(start?.account_id ?? data.accounts[0]?.id ?? null);
@@ -95,9 +118,13 @@ function TransactionForm({
   const [pickedCategoryId, setCategoryId] = useState<number | null>(start?.category_id ?? null);
   // Falls back on render, so a category added from this screen gets picked once it exists.
   const categoryId = pickedCategoryId ?? data.categories[0]?.id ?? null;
-  const [date, setDate] = useState(existing?.date ?? toDateString(new Date()));
+  const [date, setDate] = useState(existing?.date ?? fromRecurring?.due ?? toDateString(new Date()));
   const [note, setNote] = useState(start?.note ?? "");
   const [error, setError] = useState<string | null>(null);
+  // Only a brand-new transaction can be set to repeat; one logged from a recurring item already does.
+  const canRepeat = !existing && !fromRecurring;
+  const [repeat, setRepeat] = useState<"off" | "monthly" | "twice">("off");
+  const [secondDay, setSecondDay] = useState("");
   const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace(HOME));
@@ -130,7 +157,26 @@ function TransactionForm({
   // New expenses need a budgeted category, so everything logged shows on Home. Edits stay allowed,
   // since imported transactions can already sit in categories without one.
   const needsBudget = !existing && type === "expense" && unbudgeted !== undefined;
-  const canSave = tx !== null && transactionShapeProblem(tx, data.accounts) === null && date <= today && !needsBudget;
+  // Repeats on this transaction's day of the month, plus a second day for "twice a month".
+  const day = Number(date.slice(8, 10));
+  const second = /^\d{1,2}$/.test(secondDay) ? Number(secondDay) : NaN;
+  const repeatDays =
+    repeat === "off" ? null : { day, second_day: repeat === "twice" ? second : null };
+  const repeatProblem =
+    repeat === "twice" && !(isDay(second) && second !== day)
+      ? `Enter a second day from 1 to 31, other than the ${ordinal(day)}.`
+      : null;
+  const canSave =
+    tx !== null &&
+    transactionShapeProblem(tx, data.accounts) === null &&
+    date <= today &&
+    !needsBudget &&
+    repeatProblem === null;
+  const pickRepeat = (r: typeof repeat) => {
+    setRepeat(r);
+    // Half a month away is the usual pair: the 15th goes with the 30th, the 1st with the 16th.
+    if (r === "twice" && secondDay === "") setSecondDay(String(day <= 15 ? day + 15 : day - 15));
+  };
 
   // Heads-up when this expense brings its category near or past that month's budget.
   function budgetNote(t: NewTransaction): string | null {
@@ -151,14 +197,18 @@ function TransactionForm({
     if (!tx) return setError("Enter a valid amount.");
     if (date > today) return setError("The date can't be in the future.");
     if (needsBudget) return setError(`Set a budget for ${unbudgeted.name} first.`);
+    if (repeatProblem) return setError(repeatProblem);
     const problem = validateTransaction(tx, data.accounts, data.transactions);
     if (problem) return setError(problem);
     try {
-      await saveTransaction(db, tx);
+      await saveTransaction(db, tx, {
+        repeat: repeatDays ?? undefined,
+        handles: fromRecurring && { id: fromRecurring.item.id, date: fromRecurring.due },
+      });
       close();
       const done = existing ? "Transaction updated" : "Transaction logged";
-      const warning = budgetNote(tx);
-      toast(warning ? `${done}. ${warning}` : done);
+      const extra = repeatDays ? `Repeats ${scheduleText(repeatDays).toLowerCase()}.` : budgetNote(tx);
+      toast(extra ? `${done}. ${extra}` : done);
     } catch (e) {
       setError(`Couldn't save: ${String(e)}`);
     }
@@ -235,6 +285,24 @@ function TransactionForm({
       {/* Phone pickers stop at today; typed web dates can still land in the future. */}
       {date > today && <ErrorText>The date can’t be in the future.</ErrorText>}
       <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
+      {canRepeat && (
+        <>
+          <Segmented label="Repeat" options={REPEATS} value={repeat} onChange={pickRepeat} />
+          {repeat === "twice" && (
+            <Field
+              label="Second day of the month"
+              value={secondDay}
+              onChangeText={(t) => setSecondDay(t.replace(/\D/g, "").slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+          )}
+          {repeatDays && !repeatProblem && (
+            <Muted>{`${scheduleText(repeatDays)}, it shows on Home for you to log or skip. A name in the note, like “Rent”, makes it easy to spot.`}</Muted>
+          )}
+          {repeatProblem && repeat === "twice" && secondDay !== "" && <ErrorText>{repeatProblem}</ErrorText>}
+        </>
+      )}
       <ErrorText>{error}</ErrorText>
       <Button title="Save" onPress={save} disabled={!canSave} />
       {existing && (

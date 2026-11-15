@@ -4,6 +4,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { AccountCard } from "@/components/account-card";
 import { AddCategoryTile, BudgetGrid, BudgetTile } from "@/components/budget-tile";
+import { DueRecurringCard } from "@/components/recurring";
+import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
 import {
   accountAmount,
@@ -11,10 +13,12 @@ import {
   budgetFor,
   currentMonth,
   daysBetween,
+  dueRecurring,
   formatMonth,
   spentFor,
   toDateString,
 } from "@/lib/ledger";
+import { markRecurringHandled } from "@/db/db";
 import { formatMoney } from "@/lib/money";
 import { scheduleReminders } from "@/lib/reminders";
 import { useData } from "@/lib/use-data";
@@ -56,7 +60,8 @@ function BackupReminder({ days, backedUp }: { days: number; backedUp: boolean })
 }
 
 export default function Home() {
-  const { data, error } = useData();
+  const { db, data, error, reload } = useData();
+  const toast = useToast();
   // Home loads on every launch and after each edit elsewhere, so this keeps reminders in step with the data:
   // a paid-off card stops reminding and a new due date gets one.
   useEffect(() => {
@@ -70,6 +75,7 @@ export default function Home() {
   const backupDays = backupDueDays(data.lastBackup, data.transactions, today);
   // Only mention the last backup when the count actually starts there, not at data logged after it.
   const fromBackup = data.lastBackup !== null && daysBetween(data.lastBackup, today) === backupDays;
+  const due = dueRecurring(data.recurring, today);
   // Categories without a budget would only show spending; History's category chart covers that.
   const budgeted = data.categories.flatMap((c) => {
     const budget = budgetFor(c.id, month, data.budgets);
@@ -104,6 +110,26 @@ export default function Home() {
       </View>
 
       {backupDays !== null && <BackupReminder days={backupDays} backedUp={fromBackup} />}
+
+      {due.length > 0 && (
+        <>
+          <Heading>Due</Heading>
+          {due.map(({ recurring, date }) => (
+            <DueRecurringCard
+              key={recurring.id}
+              recurring={recurring}
+              date={date}
+              data={data}
+              currency={currency}
+              onSkip={() =>
+                markRecurringHandled(db, recurring.id, date)
+                  .then(reload)
+                  .catch((e: unknown) => toast(`Couldn't skip it: ${String(e)}`))
+              }
+            />
+          ))}
+        </>
+      )}
 
       <Heading>My accounts</Heading>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">

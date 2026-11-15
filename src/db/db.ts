@@ -1,9 +1,9 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { type CategoryIcon, toCategoryIcon } from "@/lib/category-icons";
-import type { Account, Category, CategoryBudget, NewTransaction, Transaction } from "@/lib/ledger";
+import type { Account, Category, CategoryBudget, NewTransaction, Recurring, Transaction } from "@/lib/ledger";
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -61,6 +61,27 @@ export async function migrate(db: SQLiteDatabase) {
       ALTER TABLE accounts ADD COLUMN due_day INTEGER CHECK (due_day BETWEEN 1 AND 31);
     `);
   }
+  if (version < 4) {
+    // Same rules as transactions. A recurring item is only a template, so deleting its account or category
+    // takes it along instead of blocking the delete.
+    await db.execAsync(`
+      CREATE TABLE recurring (
+        id INTEGER PRIMARY KEY NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('expense', 'income', 'transfer')),
+        amount INTEGER NOT NULL CHECK (amount > 0),
+        note TEXT NOT NULL DEFAULT '',
+        account_id INTEGER NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+        to_account_id INTEGER REFERENCES accounts (id) ON DELETE CASCADE,
+        category_id INTEGER REFERENCES categories (id) ON DELETE CASCADE,
+        day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 31),
+        second_day INTEGER CHECK (second_day BETWEEN 1 AND 31),
+        handled_through TEXT NOT NULL,
+        CHECK ((type = 'expense') = (category_id IS NOT NULL)),
+        CHECK ((type = 'transfer') = (to_account_id IS NOT NULL)),
+        CHECK (to_account_id IS NULL OR to_account_id <> account_id)
+      );
+    `);
+  }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
@@ -78,6 +99,7 @@ export type Data = {
   categories: Category[];
   budgets: CategoryBudget[];
   transactions: Transaction[];
+  recurring: Recurring[];
 };
 
 // DO NOTHING keeps the first choice: currency is locked once set.
@@ -142,21 +164,48 @@ export async function deleteCategory(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM categories WHERE id = ?", id);
 }
 
-export async function saveTransaction(db: SQLiteDatabase, t: NewTransaction) {
+// `repeat` also sets it up to recur from this date on; `handles` marks a due recurring date as done. Either way it's
+// one database transaction, so a transaction is never logged without its recurring bookkeeping or the other way round.
+export async function saveTransaction(
+  db: SQLiteDatabase,
+  t: NewTransaction,
+  extra: { repeat?: { day: number; second_day: number | null }; handles?: { id: number; date: string } } = {},
+) {
   const values = [t.type, t.amount, t.date, t.note.trim(), t.account_id, t.to_account_id, t.category_id] as const;
-  if (t.id === undefined) {
-    await db.runAsync(
-      `INSERT INTO transactions (type, amount, date, note, account_id, to_account_id, category_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ...values,
-    );
-  } else {
-    await db.runAsync(
-      `UPDATE transactions SET type = ?, amount = ?, date = ?, note = ?, account_id = ?, to_account_id = ?,
-       category_id = ? WHERE id = ?`,
-      ...values, t.id,
-    );
-  }
+  await db.withTransactionAsync(async () => {
+    if (t.id === undefined) {
+      await db.runAsync(
+        `INSERT INTO transactions (type, amount, date, note, account_id, to_account_id, category_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ...values,
+      );
+    } else {
+      await db.runAsync(
+        `UPDATE transactions SET type = ?, amount = ?, date = ?, note = ?, account_id = ?, to_account_id = ?,
+         category_id = ? WHERE id = ?`,
+        ...values, t.id,
+      );
+    }
+    if (extra.repeat) {
+      // This date is already logged, so the first due date is the one after it.
+      await db.runAsync(
+        `INSERT INTO recurring (type, amount, note, account_id, to_account_id, category_id, day, second_day,
+         handled_through) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        t.type, t.amount, t.note.trim(), t.account_id, t.to_account_id, t.category_id,
+        extra.repeat.day, extra.repeat.second_day, t.date,
+      );
+    }
+    if (extra.handles) await markRecurringHandled(db, extra.handles.id, extra.handles.date);
+  });
+}
+
+// Logged or skipped: the item moves on to its next date.
+export async function markRecurringHandled(db: SQLiteDatabase, id: number, date: string) {
+  await db.runAsync("UPDATE recurring SET handled_through = ? WHERE id = ?", date, id);
+}
+
+export async function deleteRecurring(db: SQLiteDatabase, id: number) {
+  await db.runAsync("DELETE FROM recurring WHERE id = ?", id);
 }
 
 export async function deleteTransaction(db: SQLiteDatabase, id: number) {
@@ -207,6 +256,7 @@ export async function saveLastBackup(db: SQLiteDatabase, date: string) {
 
 // The theme, app lock and reminders are phone preferences, not data, so they survive clearing and importing.
 const DELETE_ALL = `
+  DELETE FROM recurring;
   DELETE FROM transactions;
   DELETE FROM category_budgets;
   DELETE FROM categories;
@@ -250,12 +300,20 @@ export async function replaceAllData(
         t.id, t.type, t.amount, t.date, t.note, t.account_id, t.to_account_id, t.category_id,
       );
     }
+    for (const r of data.recurring) {
+      await db.runAsync(
+        `INSERT INTO recurring (id, type, amount, note, account_id, to_account_id, category_id, day, second_day,
+         handled_through) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        r.id, r.type, r.amount, r.note, r.account_id, r.to_account_id, r.category_id, r.day, r.second_day,
+        r.handled_through,
+      );
+    }
   });
 }
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
-  const [setting, backup, due, daily, accounts, categories, budgets, transactions] = await Promise.all([
+  const [setting, backup, due, daily, accounts, categories, budgets, transactions, recurring] = await Promise.all([
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'currency'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'last_backup'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_due'"),
@@ -264,6 +322,7 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
     db.getAllAsync<Category>("SELECT * FROM categories ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
     db.getAllAsync<Transaction>("SELECT * FROM transactions ORDER BY date DESC, id DESC"),
+    db.getAllAsync<Recurring>("SELECT * FROM recurring ORDER BY id"),
   ]);
   return {
     currency: setting?.value ?? null,
@@ -278,5 +337,6 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
     categories: categories.map((c) => ({ ...c, icon: toCategoryIcon(c.icon) })),
     budgets,
     transactions,
+    recurring,
   };
 }

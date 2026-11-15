@@ -6,6 +6,7 @@ import { ScrollView, Text, View } from "react-native";
 
 import { APP_LOCK_SUPPORTED, useAppLock } from "@/components/app-lock";
 import { TimeField } from "@/components/date-field";
+import { RecurringList } from "@/components/recurring";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/components/toast";
 import { Button, Card, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
@@ -13,6 +14,7 @@ import {
   type Reminders,
   type Theme,
   clearAllData,
+  deleteRecurring,
   replaceAllData,
   saveLastBackup,
   saveReminders,
@@ -43,7 +45,7 @@ export default function Settings() {
   const scheme: Theme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
 
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions } = data;
+  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions, recurring } = data;
   const cardsWithDueDay = accounts.some((a) => a.type === "credit_card" && a.due_day !== null);
 
   async function changeTheme(theme: Theme) {
@@ -70,11 +72,23 @@ export default function Settings() {
         return setProblem("Notifications are off for Pocketeer. Turn them on in your phone’s settings to get reminders.");
       }
       await saveReminders(db, next);
-      await scheduleReminders({ currency, lastBackup, reminders: next, accounts, categories, budgets, transactions });
+      const loaded = { currency, lastBackup, accounts, categories, budgets, transactions, recurring };
+      await scheduleReminders({ ...loaded, reminders: next });
       reload();
       if (turningOn) toast("Reminder on");
     } catch (e) {
       setProblem(`Couldn't change reminders: ${String(e)}`);
+    }
+  }
+
+  async function stopRecurring(id: number) {
+    setProblem(null);
+    try {
+      await deleteRecurring(db, id);
+      reload();
+      toast("Stopped repeating");
+    } catch (e) {
+      setProblem(`Couldn't stop it: ${String(e)}`);
     }
   }
 
@@ -84,7 +98,7 @@ export default function Settings() {
       const now = new Date();
       await shareFile(
         `pocketeer-backup-${toDateString(now)}.json`,
-        toBackupJson({ currency, accounts, categories, budgets, transactions }, now),
+        toBackupJson({ currency, accounts, categories, budgets, transactions, recurring }, now),
         "backup",
       );
       // ponytail: the share sheet doesn't say whether the file was actually saved, so any completed export counts.
@@ -212,6 +226,9 @@ export default function Settings() {
           )}
         </>
       )}
+
+      <Heading>Recurring</Heading>
+      <RecurringList data={data} currency={currency} onStop={stopRecurring} />
 
       <Heading>Backup</Heading>
       <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>
