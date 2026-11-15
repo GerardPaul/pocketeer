@@ -104,6 +104,7 @@ function AppStack() {
             <Stack.Screen name="account/transactions/[id]" options={{ headerShown: false, title: "Transactions" }} />
             <Stack.Screen name="category/[id]" options={{ presentation: "modal", title: "Category" }} />
             <Stack.Screen name="transaction/[id]" options={{ presentation: "modal", title: "Transaction" }} />
+            <Stack.Screen name="settings/[section]" options={{ title: "Settings" }} />
           </Stack>
         </AppLockProvider>
       </ToastProvider>

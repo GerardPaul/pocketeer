@@ -42,7 +42,7 @@ function AddTile({ label, onPress }: { label: string; onPress: () => void }) {
 function BackupReminder({ days, backedUp }: { days: number; backedUp: boolean }) {
   const { tint } = useColors();
   return (
-    <Card onPress={() => router.push("/settings")}>
+    <Card onPress={() => router.push({ pathname: "/settings/[section]", params: { section: "data" } })}>
       <View className="flex-row items-center gap-3">
         <Icon name="download" color={tint} size={22} />
         <View className="flex-1">

@@ -82,6 +82,9 @@ const ICONS = {
   filter: "filter_list",
   edit: "edit",
   list: "receipt_long",
+  palette: "palette",
+  bell: "notifications",
+  repeat: "repeat",
 } satisfies Record<string, IconSymbol>;
 
 export type IconName = keyof typeof ICONS;
