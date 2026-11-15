@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { APP_LOCK_SUPPORTED, useAppLock } from "@/components/app-lock";
 import { TimeField } from "@/components/date-field";
+import { ProLock } from "@/components/pro-lock";
 import { RecurringList } from "@/components/recurring";
 import { useToast } from "@/components/toast";
 import {
@@ -64,7 +65,7 @@ export default function SettingsPage() {
     !(section === "reminders" && !REMINDERS_SUPPORTED);
   if (!known) return <EmptyState message="This settings page doesn’t exist." />;
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions, recurring, goals } = data;
+  const { currency, lastBackup, reminders, accounts, categories, budgets, transactions, recurring, goals, pro } = data;
   const cardsWithDueDay = accounts.some((a) => a.type === "credit_card" && a.due_day !== null);
 
   async function changeTheme(theme: Theme) {
@@ -92,7 +93,7 @@ export default function SettingsPage() {
       }
       await saveReminders(db, next);
       const loaded = { currency, lastBackup, accounts, categories, budgets, transactions, recurring, goals };
-      await scheduleReminders({ ...loaded, reminders: next });
+      await scheduleReminders({ ...loaded, reminders: next, pro });
       reload();
       if (turningOn) toast("Reminder on");
     } catch (e) {
@@ -290,13 +291,17 @@ export default function SettingsPage() {
                 Every transaction as a CSV file for Excel, Google Sheets or Numbers. It can’t be imported back, so use
                 Export data for backups.
               </Muted>
-              <Button
-                title="Export CSV"
-                icon="list"
-                variant="secondary"
-                onPress={exportCsv}
-                disabled={transactions.length === 0}
-              />
+              {pro ? (
+                <Button
+                  title="Export CSV"
+                  icon="list"
+                  variant="secondary"
+                  onPress={exportCsv}
+                  disabled={transactions.length === 0}
+                />
+              ) : (
+                <ProLock feature="csv" text="Exporting a CSV spreadsheet is part of Pro. Backups stay free." />
+              )}
             </>
           )}
 

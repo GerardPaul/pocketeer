@@ -2,11 +2,13 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 import { DateField } from "@/components/date-field";
+import { ProLock } from "@/components/pro-lock";
 import { useToast } from "@/components/toast";
 import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, Muted, Segmented, Select } from "@/components/ui";
 import { deleteGoal, saveGoal } from "@/db/db";
 import { type Goal, currentMonth, isRealDate, shiftMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
+import { FREE_LIMITS, atFreeLimit } from "@/lib/pro";
 import { useData } from "@/lib/use-data";
 
 const DATE_OPTIONS = [
@@ -20,6 +22,16 @@ export default function GoalScreen() {
   if (!data?.currency) return null;
   const existing = data.goals.find((g) => String(g.id) === id);
   if (id !== "new" && !existing) return <EmptyState message="This goal no longer exists." />;
+  if (!existing && atFreeLimit("goals", data.goals.length, data.pro)) {
+    return (
+      <FormScrollView>
+        <ProLock
+          feature="goals"
+          text={`Free includes ${FREE_LIMITS.goals} savings goal. Unlock Pro to add more, or edit the one you have.`}
+        />
+      </FormScrollView>
+    );
+  }
   if (!data.accounts.some((a) => a.type === "regular")) {
     return (
       <EmptyState

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { DateField } from "@/components/date-field";
+import { ProLock } from "@/components/pro-lock";
 import { scheduleText } from "@/components/recurring";
 import { useToast } from "@/components/toast";
 import {
@@ -39,6 +40,7 @@ import {
   validateTransaction,
 } from "@/lib/ledger";
 import { formatMoney, parseAmount, toInputString } from "@/lib/money";
+import { FREE_LIMITS, atFreeLimit } from "@/lib/pro";
 import { HOME } from "@/lib/routes";
 import { useData } from "@/lib/use-data";
 
@@ -140,6 +142,8 @@ function TransactionForm({
   const [error, setError] = useState<string | null>(null);
   // Only a brand-new transaction can be set to repeat; one logged from a recurring item already does.
   const canRepeat = !existing && !fromRecurring && !editing;
+  // Past Free's limit, Repeat makes way for the Pro card; items already set up keep coming due.
+  const repeatLocked = canRepeat && atFreeLimit("recurring", data.recurring.length, data.pro);
   const [repeat, setRepeat] = useState<"off" | "monthly" | "twice">(
     editing ? (editing.second_day === null ? "monthly" : "twice") : "off",
   );
@@ -347,7 +351,13 @@ function TransactionForm({
           ))}
         </View>
       )}
-      {(canRepeat || editing) && (
+      {repeatLocked && (
+        <ProLock
+          feature="recurring"
+          text={`Free includes ${FREE_LIMITS.recurring} recurring transactions. Unlock Pro to repeat more.`}
+        />
+      )}
+      {((canRepeat && !repeatLocked) || editing) && (
         <>
           {/* Stop repeating lives on the Settings list, so an edit picks between the two schedules only. */}
           <Segmented

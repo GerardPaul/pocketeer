@@ -107,6 +107,8 @@ export type Data = {
   lastBackup: string | null;
   // Phone settings too, like the theme: they survive clearing and importing and aren't in the backup file.
   reminders: Reminders;
+  // Pocketeer Pro bought on this phone (or turned on for testing); a phone setting like the theme.
+  pro: boolean;
   accounts: Account[];
   categories: Category[];
   budgets: CategoryBudget[];
@@ -282,6 +284,13 @@ export async function saveReminders(db: SQLiteDatabase, r: Reminders) {
   });
 }
 
+export async function savePro(db: SQLiteDatabase, on: boolean) {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('pro', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    on ? "on" : "off",
+  );
+}
+
 export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   await db.runAsync(
     "INSERT INTO settings (key, value) VALUES ('last_backup', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -289,7 +298,7 @@ export async function saveLastBackup(db: SQLiteDatabase, date: string) {
   );
 }
 
-// The theme, app lock and reminders are phone preferences, not data, so they survive clearing and importing.
+// The theme, app lock, reminders and Pro are phone preferences, not data, so they survive clearing and importing.
 const DELETE_ALL = `
   DELETE FROM goals;
   DELETE FROM recurring;
@@ -297,7 +306,7 @@ const DELETE_ALL = `
   DELETE FROM category_budgets;
   DELETE FROM categories;
   DELETE FROM accounts;
-  DELETE FROM settings WHERE key NOT IN ('theme', 'app_lock', 'reminder_due', 'reminder_daily');
+  DELETE FROM settings WHERE key NOT IN ('theme', 'app_lock', 'reminder_due', 'reminder_daily', 'pro');
 `;
 
 // Removes everything, currency included, so the app starts over at the welcome screen.
@@ -308,7 +317,7 @@ export async function clearAllData(db: SQLiteDatabase) {
 // Replaces everything in one transaction, so a failed import leaves the old data untouched.
 export async function replaceAllData(
   db: SQLiteDatabase,
-  data: Omit<Data, "currency" | "lastBackup" | "reminders"> & { currency: string },
+  data: Omit<Data, "currency" | "lastBackup" | "reminders" | "pro"> & { currency: string },
 ) {
   await db.withTransactionAsync(async () => {
     await db.execAsync(DELETE_ALL);
@@ -355,12 +364,13 @@ export async function replaceAllData(
 
 // ponytail: loads everything and computes in JS; fine for one person's data, switch to SQL aggregates if it gets slow.
 export async function loadData(db: SQLiteDatabase): Promise<Data> {
-  const [setting, backup, due, daily, accounts, categories, budgets, transactions, recurring, goals] =
+  const [setting, backup, due, daily, pro, accounts, categories, budgets, transactions, recurring, goals] =
     await Promise.all([
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'currency'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'last_backup'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_due'"),
     db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'reminder_daily'"),
+    db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'pro'"),
     db.getAllAsync<Account>("SELECT * FROM accounts ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<Category>("SELECT * FROM categories ORDER BY name COLLATE NOCASE"),
     db.getAllAsync<CategoryBudget>("SELECT * FROM category_budgets"),
@@ -376,6 +386,7 @@ export async function loadData(db: SQLiteDatabase): Promise<Data> {
       due: due?.value === "on",
       daily: daily && /^\d{2}:\d{2}$/.test(daily.value) ? daily.value : null,
     },
+    pro: pro?.value === "on",
     accounts,
     // The column is plain text, so an unknown name falls back instead of breaking the icon lookup.
     categories: categories.map((c) => ({ ...c, icon: toCategoryIcon(c.icon) })),

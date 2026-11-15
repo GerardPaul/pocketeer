@@ -4,6 +4,7 @@ import { PanResponder, Pressable, SectionList, Text, View } from "react-native";
 
 import { BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { CategoryBars, MonthBars } from "@/components/charts";
+import { ProLock, openPro } from "@/components/pro-lock";
 import { DayHeader, TransactionRow } from "@/components/transaction-list";
 import {
   ErrorText,
@@ -141,10 +142,14 @@ function Insights({
       {categoryRows.length > 0 && (
         <>
           <Heading>Spending by category</Heading>
-          <CategoryBars rows={categoryRows} currency={currency} />
+          {/* Free previews the biggest category; Pro shows them all and the 6-month trend. */}
+          <CategoryBars rows={data.pro ? categoryRows : categoryRows.slice(0, 1)} currency={currency} />
         </>
       )}
-      {trend.some((m) => m.income > 0 || m.spent > 0) && (
+      {!data.pro && (categoryRows.length > 0 || trend.some((m) => m.income > 0 || m.spent > 0)) && (
+        <ProLock feature="insights" text="See every category and your last 6 months of income and spending with Pro." />
+      )}
+      {data.pro && trend.some((m) => m.income > 0 || m.spent > 0) && (
         <>
           <Heading>Last 6 months</Heading>
           <MonthBars months={trend} selected={month} onSelect={setMonth} currency={currency} />
@@ -339,7 +344,14 @@ export default function History() {
             </Pressable>
             {activeFilters > 0 && <TextButton title="Clear filters" onPress={clearFilters} />}
             <View className="flex-1" />
-            {!searchOpen && <RoundButton label="Search all months" icon="search" filled onPress={() => setSearchOpen(true)} />}
+            {!searchOpen && (
+              <RoundButton
+                label="Search all months"
+                icon="search"
+                filled
+                onPress={() => (data.pro ? setSearchOpen(true) : openPro("search"))}
+              />
+            )}
           </View>
           {showFilters && (
             <View className="gap-4 rounded-3xl bg-surface p-4 dark:bg-surface-dark">

@@ -11,27 +11,31 @@ import { REMINDERS_SUPPORTED } from "@/lib/reminders";
 import { SETTINGS_SECTIONS, type SettingsSection } from "@/lib/routes";
 import { useData } from "@/lib/use-data";
 
-// One row per settings page: what it is, how it's set now, and a chevron to open it.
+// One row per settings page: what it is, how it's set now, and a chevron to open it. `section` opens that settings
+// page; `title` + `onPress` make a row that goes elsewhere (Pocketeer Pro).
 function Row({
   section,
+  title = section ? SETTINGS_SECTIONS[section] : "",
+  onPress = () => router.push({ pathname: "/settings/[section]", params: { section: section! } }),
   icon,
   status,
   danger = false,
   last = false,
 }: {
-  section: SettingsSection;
+  section?: SettingsSection;
+  title?: string;
+  onPress?: () => void;
   icon: IconName;
   status: string;
   danger?: boolean;
   last?: boolean;
 }) {
   const { tint, muted } = useColors();
-  const title = SETTINGS_SECTIONS[section];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${status}`}
-      onPress={() => router.push({ pathname: "/settings/[section]", params: { section } })}
+      onPress={onPress}
       className={`min-h-16 flex-row items-center gap-3 px-4 py-3 active:bg-sea/10 dark:active:bg-white/10 ${
         last ? "" : "border-b border-line dark:border-line-dark"
       }`}
@@ -60,13 +64,23 @@ export default function Settings() {
   const lock = useAppLock();
   const dark = useColorScheme().colorScheme === "dark";
   if (!data?.currency) return <ErrorText>{error}</ErrorText>;
-  const { reminders, recurring, lastBackup, currency } = data;
+  const { reminders, recurring, lastBackup, currency, pro } = data;
 
   const reminderStatus =
     [reminders.due && "Card due dates", reminders.daily && "Daily reminder"].filter(Boolean).join(" · ") || "Off";
 
   return (
     <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-4 p-4 pb-8">
+      <Group>
+        <Row
+          title="Pocketeer Pro"
+          icon="savings"
+          status={pro ? "Unlocked" : "See what Pro adds"}
+          onPress={() => router.push("/pro")}
+          last
+        />
+      </Group>
+
       <Group>
         <Row section="appearance" icon="palette" status={dark ? "Dark theme" : "Light theme"} />
         {APP_LOCK_SUPPORTED && <Row section="security" icon="lock" status={lock.enabled ? "App lock on" : "App lock off"} />}

@@ -1,12 +1,14 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
+import { ProLock } from "@/components/pro-lock";
 import { useToast } from "@/components/toast";
 import { Button, DeleteButton, EmptyState, ErrorText, Field, FormScrollView, IconPicker, Muted } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/db/db";
 import { CATEGORY_ICON_NAMES, CATEGORY_ICONS, type CategoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/category-icons";
 import { type Category, budgetFor, currentMonth } from "@/lib/ledger";
 import { parseAmount, toInputString } from "@/lib/money";
+import { FREE_LIMITS, atFreeLimit } from "@/lib/pro";
 import { useData } from "@/lib/use-data";
 
 export default function CategoryScreen() {
@@ -15,6 +17,16 @@ export default function CategoryScreen() {
   if (!data?.currency) return null;
   const existing = data.categories.find((c) => String(c.id) === id);
   if (id !== "new" && !existing) return <EmptyState message="This category no longer exists." />;
+  if (!existing && atFreeLimit("categories", data.categories.length, data.pro)) {
+    return (
+      <FormScrollView>
+        <ProLock
+          feature="categories"
+          text={`Free includes ${FREE_LIMITS.categories} categories. Unlock Pro to add more, or edit one you have.`}
+        />
+      </FormScrollView>
+    );
+  }
   return <CategoryForm key={existing?.id ?? "new"} existing={existing} db={db} data={data} currency={data.currency} />;
 }
 
