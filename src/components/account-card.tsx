@@ -23,11 +23,14 @@ export function AccountCard({
   transactions,
   currency,
   onPress,
+  fill = false,
 }: {
   account: Account;
   transactions: readonly Transaction[];
   currency: string;
   onPress: () => void;
+  // Grow to the parent's height, so cards side by side match the tallest (a card's extra lines make it taller).
+  fill?: boolean;
 }) {
   const amount = accountAmount(account, transactions);
   const card = account.type === "credit_card";
@@ -39,7 +42,7 @@ export function AccountCard({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className={`gap-3 overflow-hidden rounded-3xl p-5 active:opacity-80 ${card ? "bg-primary" : "bg-sea"}`}
+      className={`gap-3 overflow-hidden rounded-3xl p-5 active:opacity-80 ${card ? "bg-primary" : "bg-sea"} ${fill ? "flex-1" : ""}`}
     >
       <View
         className={`absolute -right-8 -top-8 h-24 w-24 rounded-full ${card ? "bg-accent" : "bg-white/25"}`}

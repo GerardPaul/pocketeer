@@ -179,6 +179,7 @@ export default function Home() {
               transactions={data.transactions}
               currency={currency}
               onPress={() => router.push({ pathname: "/account/[id]", params: { id: a.id } })}
+              fill
             />
           </View>
         ))}
