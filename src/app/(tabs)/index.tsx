@@ -6,7 +6,7 @@ import { AccountCard } from "@/components/account-card";
 import { AddCategoryTile, BudgetGrid, BudgetTile } from "@/components/budget-tile";
 import { DueRecurringCard } from "@/components/recurring";
 import { useToast } from "@/components/toast";
-import { Button, Card, ErrorText, Heading, Icon, Muted, useColors } from "@/components/ui";
+import { Button, Card, ErrorText, Heading, Icon, Muted, TextButton, useColors } from "@/components/ui";
 import {
   accountAmount,
   backupDueDays,
@@ -131,9 +131,18 @@ export default function Home() {
         </>
       )}
 
-      <Heading>My accounts</Heading>
+      <View className="flex-row items-center justify-between">
+        <Heading>My accounts</Heading>
+        {/* Same top margin as the heading, so the two line up. */}
+        <View className="mt-3">
+          <TextButton
+            title="Add account"
+            icon="add"
+            onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })}
+          />
+        </View>
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-        <AddTile label="Add account" onPress={() => router.push({ pathname: "/account/[id]", params: { id: "new" } })} />
         {data.accounts.length === 0 && (
           <View className="w-64 justify-center rounded-3xl bg-surface p-5 dark:bg-surface-dark">
             <Muted>No accounts yet. Add your cash, bank or credit card.</Muted>
