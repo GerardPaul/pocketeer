@@ -45,3 +45,6 @@ example
 # local mock data for testing imports
 mock-data/
 scripts/mock-2026.mjs
+
+# graphify knowledge graph output
+graphify-out/
