@@ -286,6 +286,13 @@ export default function History() {
               onPress={() => setMonth(shiftMonth(month, 1))}
             />
           </View>
+          {/* One tap back from any past month, instead of stepping forward month by month. */}
+          {month < currentMonth() && (
+            // Pulled in so the link's 44px tap area doesn't add to the gaps around it.
+            <View className="-my-3 items-center">
+              <TextButton title={`Back to ${formatMonth(currentMonth())}`} onPress={() => setMonth(currentMonth())} />
+            </View>
+          )}
           {/* The whole month, whichever view is shown, so it sits above the switch. */}
           <Totals txs={monthTxs} currency={currency} />
           <Segmented label="View" hideLabel options={VIEWS} value={view} onChange={setView} />
