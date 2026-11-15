@@ -1,13 +1,25 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { APP_LOCK_SUPPORTED, useAppLock } from "@/components/app-lock";
 import { TimeField } from "@/components/date-field";
 import { RecurringList } from "@/components/recurring";
 import { useToast } from "@/components/toast";
-import { Button, Card, EmptyState, ErrorText, Heading, Icon, Muted, Segmented, useColors } from "@/components/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorText,
+  Heading,
+  Icon,
+  Muted,
+  Segmented,
+  TextButton,
+  useColors,
+} from "@/components/ui";
 import {
   type Reminders,
   type Theme,
@@ -168,142 +180,157 @@ export default function SettingsPage() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-canvas dark:bg-canvas-dark" contentContainerClassName="gap-3 p-4 pb-8">
-      <Stack.Screen options={{ title: SETTINGS_SECTIONS[section as SettingsSection] }} />
-
-      {section === "appearance" && (
-        <>
-          <Segmented
-            label="Theme"
-            options={[
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-            ]}
-            value={scheme}
-            onChange={changeTheme}
-          />
-          <Card>
-            <View className="flex-row items-center justify-between">
-              <Muted>Currency</Muted>
-              <View className="flex-row items-center gap-1.5">
-                <Icon name="lock" color={muted} size={16} />
-                <Text className="font-semibold text-base text-ink dark:text-white">{currency}</Text>
-              </View>
-            </View>
-            <Muted>Set at first launch and can’t be changed.</Muted>
-          </Card>
-        </>
-      )}
-
-      {section === "security" && (
-        <>
-          <Segmented
-            label="Lock with Face ID, fingerprint or passcode"
-            options={ON_OFF}
-            value={lock.enabled ? "on" : "off"}
-            onChange={(v) => changeLock(v === "on")}
-          />
-          <Muted>Asks when the app opens and when you come back after 30 seconds away.</Muted>
-        </>
-      )}
-
-      {section === "reminders" && (
-        <>
-          <Segmented
-            label="Card payment due dates"
-            options={ON_OFF}
-            value={reminders.due ? "on" : "off"}
-            onChange={(v) => changeReminders({ ...reminders, due: v === "on" })}
-          />
-          <Muted>
-            {cardsWithDueDay
-              ? "At 9 AM, 3 days before a card’s due date, while it has a balance."
-              : "Add a due date to a credit card to get these. At 9 AM, 3 days before it’s due."}
-          </Muted>
-          <Segmented
-            label="Daily reminder to log spending"
-            options={ON_OFF}
-            value={reminders.daily ? "on" : "off"}
-            onChange={(v) => changeReminders({ ...reminders, daily: v === "on" ? DEFAULT_DAILY : null })}
-          />
-          {reminders.daily && (
-            <TimeField
-              label="Remind me at"
-              value={reminders.daily}
-              onChange={(daily) => changeReminders({ ...reminders, daily })}
+    // Same low-key Back link as the account transactions screen instead of a header bar. NativeWind doesn't style
+    // SafeAreaView, so the background sits on a plain View.
+    <View className="flex-1 bg-canvas dark:bg-canvas-dark">
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <ScrollView className="flex-1" contentContainerClassName="gap-3 p-4 pt-2 pb-8">
+          <View className="flex-row">
+            <TextButton
+              title="Back"
+              icon="back"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/settings"))}
             />
+          </View>
+          <Text accessibilityRole="header" className="font-bold text-2xl text-ink dark:text-white">
+            {SETTINGS_SECTIONS[section as SettingsSection]}
+          </Text>
+
+          {section === "appearance" && (
+            <>
+              <Segmented
+                label="Theme"
+                options={[
+                  { value: "light", label: "Light" },
+                  { value: "dark", label: "Dark" },
+                ]}
+                value={scheme}
+                onChange={changeTheme}
+              />
+              <Card>
+                <View className="flex-row items-center justify-between">
+                  <Muted>Currency</Muted>
+                  <View className="flex-row items-center gap-1.5">
+                    <Icon name="lock" color={muted} size={16} />
+                    <Text className="font-semibold text-base text-ink dark:text-white">{currency}</Text>
+                  </View>
+                </View>
+                <Muted>Set at first launch and can’t be changed.</Muted>
+              </Card>
+            </>
           )}
-        </>
-      )}
 
-      {section === "recurring" && <RecurringList data={data} currency={currency} onStop={stopRecurring} />}
+          {section === "security" && (
+            <>
+              <Segmented
+                label="Lock with Face ID, fingerprint or passcode"
+                options={ON_OFF}
+                value={lock.enabled ? "on" : "off"}
+                onChange={(v) => changeLock(v === "on")}
+              />
+              <Muted>Asks when the app opens and when you come back after 30 seconds away.</Muted>
+            </>
+          )}
 
-      {section === "data" && (
-        <>
-          <Heading>Backup</Heading>
-          <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>
-          <Muted>{lastBackup ? `Last backup: ${lastBackup}` : "No backup yet on this phone."}</Muted>
-          <Button title="Export data" icon="share" onPress={exportData} />
-          {pending ? (
-            <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
-              <Text className="font-bold text-base text-red-600 dark:text-red-400">This will replace ALL your data</Text>
+          {section === "reminders" && (
+            <>
+              <Segmented
+                label="Card payment due dates"
+                options={ON_OFF}
+                value={reminders.due ? "on" : "off"}
+                onChange={(v) => changeReminders({ ...reminders, due: v === "on" })}
+              />
               <Muted>
-                Everything currently in the app ({count(accounts.length, "account")},{" "}
-                {count(transactions.length, "transaction")}) will be deleted and replaced with the file’s{" "}
-                {count(pending.accounts.length, "account")} and {count(pending.transactions.length, "transaction")} in{" "}
-                {pending.currency}. This can’t be undone. Export first if you want to keep a copy.
+                {cardsWithDueDay
+                  ? "At 9 AM, 3 days before a card’s due date, while it has a balance."
+                  : "Add a due date to a credit card to get these. At 9 AM, 3 days before it’s due."}
               </Muted>
-              <Button title="Replace my data" variant="danger" onPress={confirmImport} />
-              <Button title="Cancel" variant="secondary" onPress={() => setPending(null)} />
-            </View>
-          ) : (
-            <Button title="Import data" icon="download" variant="secondary" onPress={chooseFile} />
+              <Segmented
+                label="Daily reminder to log spending"
+                options={ON_OFF}
+                value={reminders.daily ? "on" : "off"}
+                onChange={(v) => changeReminders({ ...reminders, daily: v === "on" ? DEFAULT_DAILY : null })}
+              />
+              {reminders.daily && (
+                <TimeField
+                  label="Remind me at"
+                  value={reminders.daily}
+                  onChange={(daily) => changeReminders({ ...reminders, daily })}
+                />
+              )}
+            </>
           )}
 
-          <Heading>Spreadsheet</Heading>
-          <Muted>
-            Every transaction as a CSV file for Excel, Google Sheets or Numbers. It can’t be imported back, so use
-            Export data for backups.
-          </Muted>
-          <Button
-            title="Export CSV"
-            icon="list"
-            variant="secondary"
-            onPress={exportCsv}
-            disabled={transactions.length === 0}
-          />
-        </>
-      )}
+          {section === "recurring" && <RecurringList data={data} currency={currency} onStop={stopRecurring} />}
 
-      {section === "clear" && (
-        <>
-          <Muted>Deletes every account, category, budget and transaction, and resets the currency.</Muted>
-          {confirmingClear ? (
-            <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
-              <Text className="font-bold text-base text-red-600 dark:text-red-400">This will delete ALL your data</Text>
+          {section === "data" && (
+            <>
+              <Heading>Backup</Heading>
+              <Muted>Export saves all your data to a file. Import it on another phone to move your data there.</Muted>
+              <Muted>{lastBackup ? `Last backup: ${lastBackup}` : "No backup yet on this phone."}</Muted>
+              <Button title="Export data" icon="share" onPress={exportData} />
+              {pending ? (
+                <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
+                  <Text className="font-bold text-base text-red-600 dark:text-red-400">This will replace ALL your data</Text>
+                  <Muted>
+                    Everything currently in the app ({count(accounts.length, "account")},{" "}
+                    {count(transactions.length, "transaction")}) will be deleted and replaced with the file’s{" "}
+                    {count(pending.accounts.length, "account")} and {count(pending.transactions.length, "transaction")} in{" "}
+                    {pending.currency}. This can’t be undone. Export first if you want to keep a copy.
+                  </Muted>
+                  <Button title="Replace my data" variant="danger" onPress={confirmImport} />
+                  <Button title="Cancel" variant="secondary" onPress={() => setPending(null)} />
+                </View>
+              ) : (
+                <Button title="Import data" icon="download" variant="secondary" onPress={chooseFile} />
+              )}
+
+              <Heading>Spreadsheet</Heading>
               <Muted>
-                {count(accounts.length, "account")}, {count(categories.length, "category", "categories")}{" "}
-                and {count(transactions.length, "transaction")} will be removed, and you’ll pick a currency again.
-                This can’t be undone. Export first if you want to keep a copy.
+                Every transaction as a CSV file for Excel, Google Sheets or Numbers. It can’t be imported back, so use
+                Export data for backups.
               </Muted>
-              <Button title="Delete everything" variant="danger" onPress={confirmClear} />
-              <Button title="Cancel" variant="secondary" onPress={() => setConfirmingClear(false)} />
-            </View>
-          ) : (
-            <Button
-              title="Clear all data"
-              icon="trash"
-              variant="secondary"
-              onPress={() => {
-                setProblem(null);
-                setConfirmingClear(true);
-              }}
-            />
+              <Button
+                title="Export CSV"
+                icon="list"
+                variant="secondary"
+                onPress={exportCsv}
+                disabled={transactions.length === 0}
+              />
+            </>
           )}
-        </>
-      )}
 
-      <ErrorText>{problem}</ErrorText>
-    </ScrollView>
+          {section === "clear" && (
+            <>
+              <Muted>Deletes every account, category, budget and transaction, and resets the currency.</Muted>
+              {confirmingClear ? (
+                <View className="gap-3 rounded-3xl border-2 border-red-500 bg-surface p-4 dark:bg-surface-dark">
+                  <Text className="font-bold text-base text-red-600 dark:text-red-400">This will delete ALL your data</Text>
+                  <Muted>
+                    {count(accounts.length, "account")}, {count(categories.length, "category", "categories")}{" "}
+                    and {count(transactions.length, "transaction")} will be removed, and you’ll pick a currency again.
+                    This can’t be undone. Export first if you want to keep a copy.
+                  </Muted>
+                  <Button title="Delete everything" variant="danger" onPress={confirmClear} />
+                  <Button title="Cancel" variant="secondary" onPress={() => setConfirmingClear(false)} />
+                </View>
+              ) : (
+                <Button
+                  title="Clear all data"
+                  icon="trash"
+                  variant="secondary"
+                  onPress={() => {
+                    setProblem(null);
+                    setConfirmingClear(true);
+                  }}
+                />
+              )}
+            </>
+          )}
+
+          <ErrorText>{problem}</ErrorText>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
