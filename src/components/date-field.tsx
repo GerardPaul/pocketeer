@@ -32,7 +32,7 @@ export function DateField({
             mode="date"
             display="compact"
             maximumDate={maximumDate}
-            onChange={(_, d) => d && onChange(toDateString(d))}
+            onValueChange={(_, d) => onChange(toDateString(d))}
           />
         </View>
       ) : (
@@ -44,7 +44,7 @@ export function DateField({
               value: date,
               mode: "date",
               maximumDate,
-              onChange: (e, d) => e.type === "set" && d && onChange(toDateString(d)),
+              onValueChange: (_, d) => onChange(toDateString(d)),
             })
           }
           className="rounded-2xl border border-line bg-surface px-4 py-3.5 dark:border-line-dark dark:bg-surface-dark"
@@ -79,7 +79,7 @@ export function TimeField({ label, value, onChange }: { label: string; value: st
             value={date}
             mode="time"
             display="compact"
-            onChange={(_, d) => d && onChange(toTime(d))}
+            onValueChange={(_, d) => onChange(toTime(d))}
           />
         </View>
       ) : (
@@ -90,7 +90,7 @@ export function TimeField({ label, value, onChange }: { label: string; value: st
             DateTimePickerAndroid.open({
               value: date,
               mode: "time",
-              onChange: (e, d) => e.type === "set" && d && onChange(toTime(d)),
+              onValueChange: (_, d) => onChange(toTime(d)),
             })
           }
           className="rounded-2xl border border-line bg-surface px-4 py-3.5 dark:border-line-dark dark:bg-surface-dark"
