@@ -204,6 +204,15 @@ export async function markRecurringHandled(db: SQLiteDatabase, id: number, date:
   await db.runAsync("UPDATE recurring SET handled_through = ? WHERE id = ?", date, id);
 }
 
+// Leaves handled_through alone, so the next date comes after the last one logged or skipped, on the new days.
+export async function updateRecurring(db: SQLiteDatabase, r: Omit<Recurring, "handled_through">) {
+  await db.runAsync(
+    `UPDATE recurring SET type = ?, amount = ?, note = ?, account_id = ?, to_account_id = ?, category_id = ?, day = ?,
+     second_day = ? WHERE id = ?`,
+    r.type, r.amount, r.note.trim(), r.account_id, r.to_account_id, r.category_id, r.day, r.second_day, r.id,
+  );
+}
+
 export async function deleteRecurring(db: SQLiteDatabase, id: number) {
   await db.runAsync("DELETE FROM recurring WHERE id = ?", id);
 }

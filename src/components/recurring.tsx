@@ -73,7 +73,7 @@ export function DueRecurringCard({
   );
 }
 
-// Settings list of everything set to repeat, each with a two-step Stop so a stray tap can't remove it.
+// Settings list of everything set to repeat, each with Edit and a two-step Stop so a stray tap can't remove it.
 export function RecurringList({
   data,
   currency,
@@ -109,7 +109,14 @@ export function RecurringList({
                 <TextButton title="Stop" icon="close" onPress={() => onStop(r.id)} />
               </View>
             ) : (
-              <View className="mt-1 flex-row justify-end">
+              <View className="mt-1 flex-row justify-end gap-2">
+                <TextButton
+                  title="Edit"
+                  icon="edit"
+                  onPress={() =>
+                    router.push({ pathname: "/transaction/[id]", params: { id: "recurring", recurring: r.id } })
+                  }
+                />
                 <TextButton title="Stop repeating" onPress={() => setConfirming(r.id)} />
               </View>
             )}

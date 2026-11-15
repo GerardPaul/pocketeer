@@ -17,7 +17,7 @@ import {
   Select,
   TextButton,
 } from "@/components/ui";
-import { deleteTransaction, saveTransaction } from "@/db/db";
+import { deleteTransaction, saveTransaction, updateRecurring } from "@/db/db";
 import {
   type NewTransaction,
   type Recurring,
@@ -27,8 +27,10 @@ import {
   budgetWarning,
   currentMonth,
   deleteTransactionProblem,
+  formatDay,
   isDay,
   isRealDate,
+  nextOccurrence,
   ordinal,
   spentFor,
   toDateString,
@@ -54,6 +56,7 @@ const REPEATS = [
 export default function TransactionScreen() {
   // `from` is set by "Log again": a new transaction that starts as a copy of that one.
   // `recurring` and `due` are set by Log on a due card on Home: a new transaction filled in from that item.
+  // id "recurring" with `recurring` edits that recurring item itself (from Settings → Recurring).
   const { id, from, recurring, due } = useLocalSearchParams<{
     id: string;
     from?: string;
@@ -64,9 +67,11 @@ export default function TransactionScreen() {
   if (!data?.currency) return null;
   const existing = data.transactions.find((t) => String(t.id) === id);
   const template = id === "new" && from ? data.transactions.find((t) => String(t.id) === from) : undefined;
-  const item = id === "new" && recurring ? data.recurring.find((r) => String(r.id) === recurring) : undefined;
-  const fromRecurring = item && due && isRealDate(due) ? { item, due } : undefined;
-  if (id !== "new" && !existing) return <EmptyState message="This transaction no longer exists." />;
+  const item = recurring ? data.recurring.find((r) => String(r.id) === recurring) : undefined;
+  const fromRecurring = id === "new" && item && due && isRealDate(due) ? { item, due } : undefined;
+  const editing = id === "recurring" ? item : undefined;
+  if (id === "recurring" && !editing) return <EmptyState message="This recurring transaction no longer exists." />;
+  if (id !== "new" && id !== "recurring" && !existing) return <EmptyState message="This transaction no longer exists." />;
   if (data.accounts.length === 0) {
     return (
       <EmptyState
@@ -80,10 +85,16 @@ export default function TransactionScreen() {
   }
   return (
     <TransactionForm
-      key={existing?.id ?? `new-${template?.id ?? ""}-${fromRecurring ? `${fromRecurring.item.id}-${fromRecurring.due}` : ""}`}
+      key={
+        existing?.id ??
+        (editing
+          ? `recurring-${editing.id}`
+          : `new-${template?.id ?? ""}-${fromRecurring ? `${fromRecurring.item.id}-${fromRecurring.due}` : ""}`)
+      }
       existing={existing}
       template={template}
       fromRecurring={fromRecurring}
+      editing={editing}
       db={db}
       data={data}
       currency={data.currency}
@@ -95,6 +106,7 @@ function TransactionForm({
   existing,
   template,
   fromRecurring,
+  editing,
   db,
   data,
   currency,
@@ -102,13 +114,14 @@ function TransactionForm({
   existing: Transaction | undefined;
   template: Transaction | undefined;
   fromRecurring: { item: Recurring; due: string } | undefined;
+  editing: Recurring | undefined;
   db: ReturnType<typeof useData>["db"];
   data: NonNullable<ReturnType<typeof useData>["data"]>;
   currency: string;
 }) {
   // A copy takes everything but the date, which starts at today like any new entry; a due recurring item starts
   // on its due date.
-  const start = existing ?? template ?? fromRecurring?.item;
+  const start = existing ?? template ?? fromRecurring?.item ?? editing;
   const [type, setType] = useState<TransactionType>(start?.type ?? "expense");
   const [amount, setAmount] = useState(start ? toInputString(start.amount, currency) : "");
   const [accountId, setAccountId] = useState<number | null>(start?.account_id ?? data.accounts[0]?.id ?? null);
@@ -118,13 +131,19 @@ function TransactionForm({
   const [pickedCategoryId, setCategoryId] = useState<number | null>(start?.category_id ?? null);
   // Falls back on render, so a category added from this screen gets picked once it exists.
   const categoryId = pickedCategoryId ?? data.categories[0]?.id ?? null;
-  const [date, setDate] = useState(existing?.date ?? fromRecurring?.due ?? toDateString(new Date()));
+  // A recurring item has no date of its own; its last handled date stands in for the field checks.
+  const [date, setDate] = useState(
+    existing?.date ?? fromRecurring?.due ?? editing?.handled_through ?? toDateString(new Date()),
+  );
   const [note, setNote] = useState(start?.note ?? "");
   const [error, setError] = useState<string | null>(null);
   // Only a brand-new transaction can be set to repeat; one logged from a recurring item already does.
-  const canRepeat = !existing && !fromRecurring;
-  const [repeat, setRepeat] = useState<"off" | "monthly" | "twice">("off");
-  const [secondDay, setSecondDay] = useState("");
+  const canRepeat = !existing && !fromRecurring && !editing;
+  const [repeat, setRepeat] = useState<"off" | "monthly" | "twice">(
+    editing ? (editing.second_day === null ? "monthly" : "twice") : "off",
+  );
+  const [firstDay, setFirstDay] = useState(editing ? String(editing.day) : "");
+  const [secondDay, setSecondDay] = useState(editing?.second_day ? String(editing.second_day) : "");
   const toast = useToast();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace(HOME));
@@ -156,14 +175,18 @@ function TransactionForm({
   // Balance rules are checked on save, where the error can say which account is the problem.
   // New expenses need a budgeted category, so everything logged shows on Home. Edits stay allowed,
   // since imported transactions can already sit in categories without one.
-  const needsBudget = !existing && type === "expense" && unbudgeted !== undefined;
-  // Repeats on this transaction's day of the month, plus a second day for "twice a month".
-  const day = Number(date.slice(8, 10));
-  const second = /^\d{1,2}$/.test(secondDay) ? Number(secondDay) : NaN;
+  // A recurring item is checked against the budget when it's logged, not when it's edited.
+  const needsBudget = !existing && !editing && type === "expense" && unbudgeted !== undefined;
+  // Repeats on this transaction's day of the month, plus a second day for "twice a month". An edited recurring
+  // item takes its first day from its own field.
+  const dayNumber = (text: string) => (/^\d{1,2}$/.test(text) ? Number(text) : NaN);
+  const day = editing ? dayNumber(firstDay) : Number(date.slice(8, 10));
+  const second = dayNumber(secondDay);
   const repeatDays =
     repeat === "off" ? null : { day, second_day: repeat === "twice" ? second : null };
-  const repeatProblem =
-    repeat === "twice" && !(isDay(second) && second !== day)
+  const repeatProblem = !isDay(day)
+    ? "Enter a day from 1 to 31."
+    : repeat === "twice" && !(isDay(second) && second !== day)
       ? `Enter a second day from 1 to 31, other than the ${ordinal(day)}.`
       : null;
   const canSave =
@@ -198,6 +221,20 @@ function TransactionForm({
     if (date > today) return setError("The date can't be in the future.");
     if (needsBudget) return setError(`Set a budget for ${unbudgeted.name} first.`);
     if (repeatProblem) return setError(repeatProblem);
+    if (editing && repeatDays) {
+      // Balances are checked when each date is logged, so only the fields are checked here.
+      const shape = transactionShapeProblem(tx, data.accounts);
+      if (shape) return setError(shape);
+      try {
+        const { id: _, date: __, ...fields } = tx;
+        await updateRecurring(db, { ...fields, id: editing.id, ...repeatDays });
+        close();
+        toast(`Recurring transaction updated. Repeats ${scheduleText(repeatDays).toLowerCase()}.`);
+      } catch (e) {
+        setError(`Couldn't save: ${String(e)}`);
+      }
+      return;
+    }
     const problem = validateTransaction(tx, data.accounts, data.transactions);
     if (problem) return setError(problem);
     try {
@@ -229,7 +266,9 @@ function TransactionForm({
 
   return (
     <FormScrollView>
-      <Stack.Screen options={{ title: existing ? "Edit transaction" : "New transaction" }} />
+      <Stack.Screen
+        options={{ title: editing ? "Edit recurring" : existing ? "Edit transaction" : "New transaction" }}
+      />
       <Segmented label="Type" options={TYPES} value={type} onChange={setType} />
       <Field label="Amount" value={amount} onChangeText={setAmount} currency={currency} />
       <Select
@@ -281,13 +320,28 @@ function TransactionForm({
             )}
           </>
         ))}
-      <DateField label="Date" value={date} onChange={setDate} max={today} />
+      {!editing && <DateField label="Date" value={date} onChange={setDate} max={today} />}
       {/* Phone pickers stop at today; typed web dates can still land in the future. */}
       {date > today && <ErrorText>The date can’t be in the future.</ErrorText>}
       <Field label="Note (optional)" value={note} onChangeText={setNote} maxLength={200} />
-      {canRepeat && (
+      {(canRepeat || editing) && (
         <>
-          <Segmented label="Repeat" options={REPEATS} value={repeat} onChange={pickRepeat} />
+          {/* Stop repeating lives on the Settings list, so an edit picks between the two schedules only. */}
+          <Segmented
+            label="Repeat"
+            options={editing ? REPEATS.slice(1) : REPEATS}
+            value={repeat}
+            onChange={pickRepeat}
+          />
+          {editing && (
+            <Field
+              label={repeat === "twice" ? "First day of the month" : "Day of the month"}
+              value={firstDay}
+              onChangeText={(t) => setFirstDay(t.replace(/\D/g, "").slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+          )}
           {repeat === "twice" && (
             <Field
               label="Second day of the month"
@@ -298,9 +352,15 @@ function TransactionForm({
             />
           )}
           {repeatDays && !repeatProblem && (
-            <Muted>{`${scheduleText(repeatDays)}, it shows on Home for you to log or skip. A name in the note, like “Rent”, makes it easy to spot.`}</Muted>
+            <Muted>
+              {editing
+                ? `Next due ${formatDay(nextOccurrence(repeatDays, editing.handled_through))}. Changes apply from the next date on; transactions already logged stay as they are.`
+                : `${scheduleText(repeatDays)}, it shows on Home for you to log or skip. A name in the note, like “Rent”, makes it easy to spot.`}
+            </Muted>
           )}
-          {repeatProblem && repeat === "twice" && secondDay !== "" && <ErrorText>{repeatProblem}</ErrorText>}
+          {repeatProblem && (editing || (repeat === "twice" && secondDay !== "")) && (
+            <ErrorText>{repeatProblem}</ErrorText>
+          )}
         </>
       )}
       <ErrorText>{error}</ErrorText>
